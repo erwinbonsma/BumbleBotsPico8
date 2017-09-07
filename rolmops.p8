@@ -5,9 +5,28 @@ function map_unit(_col,_row)
  local me={}
  me.col=_col
  me.row=_row
- local wave=0
  local height0=0
  me.height=0
+
+ me.setwave=function(_wave)
+  me.height=height0+_wave
+ end
+
+ return me
+end
+
+function dirwave_fun(angle)
+ local me={}
+ local dx=cos(angle)
+ local dy=sin(angle)
+ local p=90 -- period
+ local a=2  -- amplitude
+ local w=4  -- wavelength
+
+ me.eval=function(x,y)
+  local d=x*dx+y*dy
+  return sin(d/w-clock/p)*a
+ end
 
  return me
 end
@@ -18,11 +37,26 @@ function map_model()
  me.ncol=8
  me.nrow=8
  me.units={}
+ me.functions={}
 
  for c=1,me.ncol do
   me.units[c]={}
   for r=1,me.nrow do
    me.units[c][r]=map_unit(c,r)
+  end
+ end
+
+ me.functions[1]=dirwave_fun(0.10)
+
+ me.update=function()
+  for c=1,me.ncol do
+   for r=1,me.nrow do
+    local w=0
+    for i=1,#me.functions do
+     w+=me.functions[i].eval(c,r)
+    end
+    me.units[c][r].setwave(w)
+   end
   end
  end
 
@@ -69,7 +103,7 @@ function map_view(_model)
    for j=1,#units do
     unit=units[j]
     x=(unit.col-unit.row)*8+56
-    y=(unit.col+unit.row)*6
+    y=(unit.col+unit.row)*5
       -unit.height
     spr(0,x,y,2,4)
    end
@@ -83,8 +117,14 @@ function _draw()
  mapview.draw()
 end
 
-mapmdl=map_model()
-mapview=map_view(mapmdl)
+function _update()
+ clock+=1
+ mapmodel.update()
+end
+
+mapmodel=map_model()
+mapview=map_view(mapmodel)
+clock=0
 __gfx__
 00000007700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000777777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
