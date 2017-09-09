@@ -50,85 +50,101 @@ function map_unit:neighbour(heading)
  ]
 end
 
-function dirwave_fun(angle)
- local me={}
- local dx=cos(angle)
- local dy=sin(angle)
- local p=90 -- period
- local a=1  -- amplitude
- local w=4  -- wavelength
+dirwave={}
 
- me.eval=function(x,y)
-  local d=x*dx+y*dy
-  return sin(d/w-clock/p)*a
- end
+function dirwave:new(angle,o)
+ o=o or {}
+ o=setmetatable(o,self)
+ self.__index=self
 
- return me
+ o.dx=cos(angle)
+ o.dy=sin(angle)
+ o.p=o.p or 90 -- period
+ o.a=o.a or 1  -- amplitude
+ o.w=o.w or 4  -- wavelength
+
+ return o
 end
 
-function map_model()
- local me={}
+function dirwave:eval(x,y)
+ local d=x*self.dx+y*self.dy
+ return sin(
+  d/self.w-clock/self.p
+ )*self.a
+end
 
- me.ncol=10
- me.nrow=10
- me.units={}
- me.functions={}
+map_model={}
 
- for c=1,me.ncol do
-  me.units[c]={}
-  for r=1,me.nrow do
-   local border=(
-    c%(me.ncol-1)==1 or
-    r%(me.nrow-1)==1
+function map_model:new(angle)
+ local o=setmetatable({},self)
+ self.__index=self
+
+ o.ncol=10
+ o.nrow=10
+ o.units={}
+ o.functions={}
+
+ for c=1,o.ncol do
+  o.units[c]={}
+  for r=1,o.nrow do
+   local is_border=(
+    c%(o.ncol-1)==1 or
+    r%(o.nrow-1)==1
    )
    local unit={}
    unit.col=c
    unit.row=r
-   if border then
+   if is_border then
     unit.tiletype=0
     unit.height0=-10
     unit.flex=0
    else
     local tt=1
-    if c>me.ncol/2 then
+    if c>o.ncol/2 then
      tt+=1
     end
-    if r>me.nrow/2 then
+    if r>o.nrow/2 then
      tt+=2
     end
     unit.tiletype=tt
     unit.flex=tt
    end
-   me.units[c][r]=map_unit:new(unit)
+   o.units[c][r]=map_unit:new(unit)
   end
  end
 
- me.functions[1]=dirwave_fun(0.10)
-
- me.update=function()
-  for c=1,me.ncol do
-   for r=1,me.nrow do
-    local w=0
-    for i=1,#me.functions do
-     w+=me.functions[i].eval(c,r)
-    end
-    me.units[c][r]:setwave(w)
-   end
-  end
- end
-
- return me
+ add(
+  o.functions,
+  dirwave:new(0.10)
+ )
+ 
+ return o
 end
 
-function isoline()
- local me={}
- me.units={}
-
- me.add=function(unit)
-  me.units[#me.units+1]=unit
+function map_model:update()
+ for c=1,self.ncol do
+  for r=1,self.nrow do
+   local w=0
+   for fun in all(self.functions) do
+    w+=fun:eval(c,r)
+   end
+   self.units[c][r]:setwave(w)
+  end
  end
+end
 
- return me
+isoline={}
+
+function isoline:new()
+ local o=setmetatable({},self)
+ self.__index=self
+ o.units={}
+
+ return o
+end
+
+function isoline:add(unit)
+ add(self.units,unit)
 end
 
 function map_view(_model)
@@ -142,22 +158,23 @@ function map_view(_model)
  }
 
  for i=1,nlines do
-  isolines[i]=isoline()
+  isolines[i]=isoline:new()
  end
  for c=1,model.ncol do
   for r=1,model.nrow do
-   isolines[c+r-1].add(model.units[c][r])
+   isolines[c+r-1]:add(model.units[c][r])
   end
  end
 
  me.draw=function()
   cls()
   for i=1,nlines do
-   units=isolines[i].units
-   for j=1,#units do
-    unit=units[j]
-    x=(unit.col-unit.row)*8+56
-    y=(unit.col+unit.row)*4
+   local units=isolines[i].units
+   for unit in all(units) do
+    local x=
+     (unit.col-unit.row)*8+56
+    local y=
+     (unit.col+unit.row)*4
       -unit.height+24
 
     if unit.tiletype!=0 then
@@ -173,7 +190,7 @@ function map_view(_model)
     end
 
     for mover in all(unit.movers) do
-     mover.draw(x,y)
+     mover:draw(x,y)
     end
    end
   end
@@ -182,118 +199,122 @@ function map_view(_model)
  return me
 end
 
-function player(c,r)
- local me={}
+player={}
 
- local rot_del=2 -- delay
- local rot_max=20*rot_del
- local rot=0     -- [0..rot_max>
- local rot_dir=0 -- -1,0,1
+-- player constants, defined
+-- globally for conciseness
+rot_del=2 -- delay
+rot_max=20*rot_del
+mov_del=2
+mov_max=4*mov_del
 
- local mov_del=2
- local mov_max=4*mov_del
- local mov_dir=0 -- -1,0,1
- local mov=0     -- <-mov_max,mov_max]
- local mov_inc=1
+function player:new()
+ local o=setmetatable({},self)
+ self.__index=self
 
- local msg="" --temp
+ o.rot=0     -- [0..rot_max>
+ o.rot_dir=0 -- -1,0,1
 
- me.update=function()
-  if rot_dir!=0 then
-   -- turning
-   rot=(rot+rot_dir+rot_max)%rot_max
-   if rot%(5*rot_del)==0 then
-    -- finished turn
-    rot_dir=0
-   end
-  elseif mov_dir!=0 then
-   -- moving
-   mov+=mov_inc
-   if mov==2*mov_del then
-    -- about to enter next unit
-    local to_unit=me.unit:neighbour(
-     me.heading()
-    )
-    if to_unit.height>me.unit.height then
-     -- cannot move, retreat
-     mov_inc=-1
-     mov+=mov_inc
-     sfx(0)
-    else
-     -- entered destination unit
-     me.unit2=to_unit
-    end
-   elseif mov==mov_max then
-    -- halfway crossing
-    local from_unit=me.unit
-    me.unit2:add_mover(me)
-    me.unit2=from_unit
-    mov=-mov_max+1
-   elseif mov==-2*mov_del then
-    -- exited source unit
-    me.unit2=nil
-   elseif mov==0 then
-    -- done
-    mov_dir=0
-    mov_inc=1
-   end
-  elseif btnp(0) then
-   rot_dir=-1
-  elseif btnp(1) then
-   rot_dir=1
-  elseif btn(2) then
-   mov_dir=1
-  elseif btn(3) then
-   mov_dir=-1
+ o.mov_dir=0 -- -1,0,1
+ o.mov=0     -- <-mov_max,mov_max]
+ o.mov_inc=1 -- -1,1
+
+ return o
+end
+
+function player:update()
+ if self.rot_dir!=0 then
+  -- turning
+  self.rot+=self.rot_dir+rot_max
+  self.rot%=rot_max
+  if self.rot%(5*rot_del)==0 then
+   -- finished turn
+   self.rot_dir=0
   end
-  if me.unit.height<-8 then
-   -- todo: die
-   reset_player()
+ elseif self.mov_dir!=0 then
+  -- moving
+  self.mov+=self.mov_inc
+  if self.mov==2*mov_del then
+   -- about to enter next unit
+   local to_unit=self.unit:neighbour(
+    self:heading()
+   )
+   if to_unit.height>self.unit.height then
+    -- cannot move, retreat
+    self.mov_inc=-1
+    self.mov+=self.mov_inc
+    sfx(0)
+   else
+    -- entered destination unit
+    self.unit2=to_unit
+   end
+  elseif self.mov==mov_max then
+   -- halfway crossing
+   local from_unit=self.unit
+   self.unit2:add_mover(self)
+   self.unit2=from_unit
+   self.mov=-mov_max+1
+  elseif self.mov==-2*mov_del then
+   -- exited source unit
+   self.unit2=nil
+  elseif self.mov==0 then
+   -- done
+   self.mov_dir=0
+   self.mov_inc=1
   end
- end --update()
-
- me.heading=function()
-  return flr(rot/5/rot_del)
+ elseif btnp(0) then
+  self.rot_dir=-1
+ elseif btnp(1) then
+  self.rot_dir=1
+ elseif btn(2) then
+  self.mov_dir=1
+ elseif btn(3) then
+  self.mov_dir=-1
  end
+ if self.unit.height<-8 then
+  -- todo: die
+  self:reset()
+ end
+end --update()
 
- me.draw=function(x,y)
-  local r=flr(rot/rot_del)
-  local dx=0
-  local dy=0
-  pal()
-  if r>9 then
-   pal(8,10)
-   pal(10,8)
-  end
-  if mov!=0 then
-   local h=me.heading()
-   dx=flr(
-    (col_delta[h]-row_delta[h])
-    *mov/mov_del+0.5
+function player:heading()
+ return flr(self.rot/5/rot_del)
+end
+
+function player:draw(x,y)
+ local r=flr(self.rot/rot_del)
+ local dx=0
+ local dy=0
+ pal()
+ if r>9 then
+  pal(8,10)
+  pal(10,8)
+ end
+ if self.mov!=0 then
+  local h=self:heading()
+  dx=flr(
+   (col_delta[h]-row_delta[h])
+   *self.mov/mov_del+0.5
+  )
+  dy=flr(
+   (col_delta[h]+row_delta[h])
+   *self.mov/mov_del/2+0.5
+  )
+  if self.unit2!=nil then
+   local dheight=(
+    self.unit2.height-
+    self.unit.height
    )
-   dy=flr(
-    (col_delta[h]+row_delta[h])
-    *mov/mov_del/2+0.5
-   )
-   if me.unit2!=nil then
-    local dheight=(
-     me.unit2.height-
-     me.unit.height
-    )
-    dy-=max(0,dheight)
-   end
+   dy-=max(0,dheight)
   end
-  print(rot..","..mov,0,0,7)
-  print(msg,0,8,7)
-  spr(96+r%10,x+dx+4,y+dy-9,1,2)
- end --draw()
+ end
+ print(self.rot..","..self.mov,0,0,7)
+ spr(96+r%10,x+dx+4,y+dy-9,1,2)
+end --draw()
 
- return me
-end --map_mover
-
-function reset_player()
+function player:reset()
  mapmodel.units[5][5]:add_mover(
-  player
+  self
  )
 end
 
@@ -303,14 +324,14 @@ end
 
 function _update()
  clock+=1
- mapmodel.update()
- player.update()
+ mapmodel:update()
+ player1:update()
 end
 
-mapmodel=map_model()
+mapmodel=map_model:new()
 mapview=map_view(mapmodel)
-player=player()
-reset_player()
+player1=player:new()
+player1:reset()
 clock=0
 __gfx__
 00000000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
