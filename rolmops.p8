@@ -6,16 +6,21 @@ row_delta={0,1,0}
 col_delta[0]=0
 row_delta[0]=-1
 
-function map_unit(_col,_row)
+function map_unit(
+ _col,_row,_type,
+ _height0,_flex
+)
  local me={}
  me.col=_col
  me.row=_row
- local height0=0
+ me.tiletype=_type
+ local height0=_height0
+ local flex=_flex
  me.height=0
  me.movers={}
 
  me.setwave=function(_wave)
-  me.height=height0+_wave
+  me.height=height0+flex*_wave
  end
 
  me.add_mover=function(mover)
@@ -51,7 +56,7 @@ function dirwave_fun(angle)
  local dx=cos(angle)
  local dy=sin(angle)
  local p=90 -- period
- local a=2*2-- amplitude
+ local a=1  -- amplitude
  local w=4  -- wavelength
 
  me.eval=function(x,y)
@@ -65,15 +70,32 @@ end
 function map_model()
  local me={}
 
- me.ncol=8
- me.nrow=8
+ me.ncol=10
+ me.nrow=10
  me.units={}
  me.functions={}
 
  for c=1,me.ncol do
   me.units[c]={}
   for r=1,me.nrow do
-   me.units[c][r]=map_unit(c,r)
+   local border=(
+    c%(me.ncol-1)==1 or
+    r%(me.nrow-1)==1
+   )
+   local unit
+   if border then
+    unit=map_unit(c,r,0,-10,0)
+   else
+    local tiletype=1
+    if c>me.ncol/2 then
+     tiletype+=1
+    end
+    if r>me.nrow/2 then
+     tiletype+=2
+    end
+    unit=map_unit(c,r,tiletype,0,tiletype)
+   end
+   me.units[c][r]=unit
   end
  end
 
@@ -132,22 +154,19 @@ function map_view(_model)
     unit=units[j]
     x=(unit.col-unit.row)*8+56
     y=(unit.col+unit.row)*4
-      -unit.height+32
+      -unit.height+24
 
-    if (i%2)==0 then
-     pal()
-    else
-     --tmp: quadrant to color
-     c=tilecolors[
-      1+
-      shr(band(unit.col-1,4),2)+
-      shr(band(unit.row-1,4),2)*2
-     ]
-     pal(5,c[1])
-     pal(6,c[2])
-     pal(7,c[3])
+    if unit.tiletype!=0 then
+     if (i%2)==0 then
+      pal()
+     else
+      c=tilecolors[unit.tiletype]
+      pal(5,c[1])
+      pal(6,c[2])
+      pal(7,c[3])
+     end
+     spr(0,x,y,2,4)
     end
-    spr(0,x,y,2,4)
 
     for mover in all(unit.movers) do
      mover.draw(x,y)
@@ -223,6 +242,10 @@ function player(c,r)
   elseif btn(3) then
    mov_dir=-1
   end
+  if me.unit.height<-8 then
+   -- todo: die
+   reset_player()
+  end
  end --update()
 
  me.heading=function()
@@ -264,6 +287,12 @@ function player(c,r)
  return me
 end --map_mover
 
+function reset_player()
+ mapmodel.units[5][5].add_mover(
+  player
+ )
+end
+
 function _draw()
  mapview.draw()
 end
@@ -275,17 +304,9 @@ function _update()
 end
 
 mapmodel=map_model()
---mapmodel.units[4][4].player=1
---mapmodel.units[2][4].player=2
---mapmodel.units[6][4].player=4
---mapmodel.units[8][4].player=5
---mapmodel.units[8][6].player=6
---mapmodel.units[6][6].player=7
 mapview=map_view(mapmodel)
 player=player()
-mapmodel.units[4][4].add_mover(
- player
-)
+reset_player()
 clock=0
 __gfx__
 00000000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
