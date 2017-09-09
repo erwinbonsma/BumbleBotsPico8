@@ -117,7 +117,7 @@ function map_model:new(angle)
   o.functions,
   dirwave:new(0.10)
  )
- 
+
  return o
 end
 
@@ -197,7 +197,7 @@ function map_view(_model)
  end
 
  return me
-end
+end --map_view
 
 player={}
 
@@ -237,7 +237,10 @@ function player:update()
   if self.mov==2*mov_del then
    -- about to enter next unit
    local to_unit=self.unit:neighbour(
-    self:heading()
+    (
+     self:heading()+
+     self.move_dir+3
+    )%4
    )
    if to_unit.height>self.unit.height then
     -- cannot move, retreat
@@ -295,11 +298,11 @@ function player:draw(x,y)
   dx=flr(
    (col_delta[h]-row_delta[h])
    *self.mov/mov_del+0.5
-  )
+  )*self.mov_dir
   dy=flr(
    (col_delta[h]+row_delta[h])
    *self.mov/mov_del/2+0.5
-  )
+  )*self.mov_dir
   if self.unit2!=nil then
    local dheight=(
     self.unit2.height-
