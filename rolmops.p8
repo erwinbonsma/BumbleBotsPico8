@@ -6,49 +6,48 @@ row_delta={0,1,0}
 col_delta[0]=0
 row_delta[0]=-1
 
-function map_unit(
- _col,_row,_type,
- _height0,_flex
-)
- local me={}
- me.col=_col
- me.row=_row
- me.tiletype=_type
- local height0=_height0
- local flex=_flex
- me.height=0
- me.movers={}
+map_unit={}
 
- me.setwave=function(_wave)
-  me.height=height0+flex*_wave
+function map_unit:new(o)
+ o=o or {}
+ o=setmetatable(o,self)
+ self.__index=self
+ o.tiletype=o.tiletype or 0
+ o.height0=o.height0 or 0
+ o.flex=o.flex or 1
+ o.height=0
+ o.movers={}
+
+ return o
+end
+
+function map_unit:setwave(wave)
+ self.height=
+  self.height0+self.flex*wave
+end
+
+function map_unit:add_mover(mover)
+ if (mover.unit!=nil) then
+  mover.unit:remove_mover(mover)
  end
+ add(self.movers,mover)
+ mover.unit=self
+end
 
- me.add_mover=function(mover)
-  if (mover.unit!=nil) then
-   mover.unit.remove_mover(mover)
-  end
-  add(me.movers,mover)
-  mover.unit=me
- end
+function map_unit:remove_mover(mover)
+ del(self.movers,mover)
+end
 
- me.remove_mover=function(mover)
-  del(me.movers,mover)
- end
+function map_unit:tostring()
+ return "("..self.col..","..self.row..")"
+end
 
- --tmp
- me.pos=function()
-  return "("..me.col..","..me.row..")"
- end
-
- me.neighbour=function(heading)
-  return mapmodel.units[
-   me.col+col_delta[heading]
-  ][
-   me.row+row_delta[heading]
-  ]
- end
-
- return me
+function map_unit:neighbour(heading)
+ return mapmodel.units[
+  self.col+col_delta[heading]
+ ][
+  self.row+row_delta[heading]
+ ]
 end
 
 function dirwave_fun(angle)
@@ -82,20 +81,25 @@ function map_model()
     c%(me.ncol-1)==1 or
     r%(me.nrow-1)==1
    )
-   local unit
+   local unit={}
+   unit.col=c
+   unit.row=r
    if border then
-    unit=map_unit(c,r,0,-10,0)
+    unit.tiletype=0
+    unit.height0=-10
+    unit.flex=0
    else
-    local tiletype=1
+    local tt=1
     if c>me.ncol/2 then
-     tiletype+=1
+     tt+=1
     end
     if r>me.nrow/2 then
-     tiletype+=2
+     tt+=2
     end
-    unit=map_unit(c,r,tiletype,0,tiletype)
+    unit.tiletype=tt
+    unit.flex=tt
    end
-   me.units[c][r]=unit
+   me.units[c][r]=map_unit:new(unit)
   end
  end
 
@@ -108,7 +112,7 @@ function map_model()
     for i=1,#me.functions do
      w+=me.functions[i].eval(c,r)
     end
-    me.units[c][r].setwave(w)
+    me.units[c][r]:setwave(w)
    end
   end
  end
@@ -207,7 +211,7 @@ function player(c,r)
    mov+=mov_inc
    if mov==2*mov_del then
     -- about to enter next unit
-    local to_unit=me.unit.neighbour(
+    local to_unit=me.unit:neighbour(
      me.heading()
     )
     if to_unit.height>me.unit.height then
@@ -222,7 +226,7 @@ function player(c,r)
    elseif mov==mov_max then
     -- halfway crossing
     local from_unit=me.unit
-    me.unit2.add_mover(me)
+    me.unit2:add_mover(me)
     me.unit2=from_unit
     mov=-mov_max+1
    elseif mov==-2*mov_del then
@@ -288,7 +292,7 @@ function player(c,r)
 end --map_mover
 
 function reset_player()
- mapmodel.units[5][5].add_mover(
+ mapmodel.units[5][5]:add_mover(
   player
  )
 end
