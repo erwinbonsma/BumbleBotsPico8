@@ -30,6 +30,11 @@ function map_unit(_col,_row)
   del(me.movers,mover)
  end
 
+ --tmp
+ me.pos=function()
+  return "("..me.col..","..me.row..")"
+ end
+
  me.neighbour=function(heading)
   return mapmodel.units[
    me.col+col_delta[heading]
@@ -46,7 +51,7 @@ function dirwave_fun(angle)
  local dx=cos(angle)
  local dy=sin(angle)
  local p=90 -- period
- local a=2  -- amplitude
+ local a=2*2-- amplitude
  local w=4  -- wavelength
 
  me.eval=function(x,y)
@@ -127,7 +132,7 @@ function map_view(_model)
     unit=units[j]
     x=(unit.col-unit.row)*8+56
     y=(unit.col+unit.row)*4
-      -unit.height
+      -unit.height+32
 
     if (i%2)==0 then
      pal()
@@ -157,15 +162,18 @@ end
 function player(c,r)
  local me={}
 
- local rot_del=4 -- delay
+ local rot_del=2 -- delay
  local rot_max=20*rot_del
  local rot=0     -- [0..rot_max>
  local rot_dir=0 -- -1,0,1
 
- local mov_del=4
+ local mov_del=2
  local mov_max=4*mov_del
  local mov_dir=0 -- -1,0,1
  local mov=0     -- <-mov_max,mov_max]
+ local mov_inc=1
+
+ local msg="" --temp
 
  me.update=function()
   if rot_dir!=0 then
@@ -177,16 +185,34 @@ function player(c,r)
    end
   elseif mov_dir!=0 then
    -- moving
-   mov=mov+1
-   if mov==mov_max then
-    -- halfway crossing
-    me.unit.neighbour(
+   mov+=mov_inc
+   if mov==2*mov_del then
+    -- about to enter next unit
+    local to_unit=me.unit.neighbour(
      me.heading()
-    ).add_mover(me)
+    )
+    if to_unit.height>me.unit.height then
+     -- cannot move, retreat
+     mov_inc=-1
+     mov+=mov_inc
+     sfx(0)
+    else
+     -- entered destination unit
+     me.unit2=to_unit
+    end
+   elseif mov==mov_max then
+    -- halfway crossing
+    local from_unit=me.unit
+    me.unit2.add_mover(me)
+    me.unit2=from_unit
     mov=-mov_max+1
+   elseif mov==-2*mov_del then
+    -- exited source unit
+    me.unit2=nil
    elseif mov==0 then
     -- done
-    mov_dir = 0
+    mov_dir=0
+    mov_inc=1
    end
   elseif btnp(0) then
    rot_dir=-1
@@ -214,10 +240,24 @@ function player(c,r)
   end
   if mov!=0 then
    local h=me.heading()
-   dx=(col_delta[h]-row_delta[h])*mov/mov_del
-   dy=(col_delta[h]+row_delta[h])*mov/mov_del/2
+   dx=flr(
+    (col_delta[h]-row_delta[h])
+    *mov/mov_del+0.5
+   )
+   dy=flr(
+    (col_delta[h]+row_delta[h])
+    *mov/mov_del/2+0.5
+   )
+   if me.unit2!=nil then
+    local dheight=(
+     me.unit2.height-
+     me.unit.height
+    )
+    --dy+=max(0,dheight)
+   end
   end
-  print(rot,0,0,7)
+  print(rot..","..mov,0,0,7)
+  print(msg,0,8,7)
   spr(96+r%10,x+dx+4,y+dy-9,1,2)
  end --draw()
 
@@ -414,7 +454,7 @@ __map__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
-000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000100001e0501a750000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
