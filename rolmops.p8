@@ -1,16 +1,41 @@
 pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
+col_delta={1,0,-1}
+row_delta={0,1,0}
+col_delta[0]=0
+row_delta[0]=-1
+
 function map_unit(_col,_row)
  local me={}
  me.col=_col
  me.row=_row
  local height0=0
  me.height=0
- me.player=0
+ me.movers={}
 
  me.setwave=function(_wave)
   me.height=height0+_wave
+ end
+
+ me.add_mover=function(mover)
+  if (mover.unit!=nil) then
+   mover.unit.remove_mover(mover)
+  end
+  add(me.movers,mover)
+  mover.unit=me
+ end
+
+ me.remove_mover=function(mover)
+  del(me.movers,mover)
+ end
+
+ me.neighbour=function(heading)
+  return mapmodel.units[
+   me.col+col_delta[heading]
+  ][
+   me.row+row_delta[heading]
+  ]
  end
 
  return me
@@ -119,12 +144,8 @@ function map_view(_model)
     end
     spr(0,x,y,2,4)
 
-    if unit.player==8 then
-     player.draw(x,y)
-    elseif unit.player>0 then
-     pal()
-     pal(7,0)
-     spr(62+unit.player*2,x,y-8,2,2)
+    for mover in all(unit.movers) do
+     mover.draw(x,y)
     end
    end
   end
@@ -135,13 +156,16 @@ end
 
 function player(c,r)
  local me={}
- me.x=0
- me.y=0
+
  local rot_del=4 -- delay
  local rot_max=20*rot_del
  local rot=0     -- [0..rot_max>
  local rot_dir=0 -- -1,0,1
- local mov_dir=0 -- [0..4]
+
+ local mov_del=4
+ local mov_max=4*mov_del
+ local mov_dir=0 -- -1,0,1
+ local mov=0     -- <-mov_max,mov_max]
 
  me.update=function()
   if rot_dir!=0 then
@@ -151,25 +175,50 @@ function player(c,r)
     -- finished turn
     rot_dir=0
    end
-   return
-  end
-
-  if btnp(0) then
+  elseif mov_dir!=0 then
+   -- moving
+   mov=mov+1
+   if mov==mov_max then
+    -- halfway crossing
+    me.unit.neighbour(
+     me.heading()
+    ).add_mover(me)
+    mov=-mov_max+1
+   elseif mov==0 then
+    -- done
+    mov_dir = 0
+   end
+  elseif btnp(0) then
    rot_dir=-1
   elseif btnp(1) then
    rot_dir=1
+  elseif btn(2) then
+   mov_dir=1
+  elseif btn(3) then
+   mov_dir=-1
   end
  end --update()
 
+ me.heading=function()
+  return flr(rot/5/rot_del)
+ end
+
  me.draw=function(x,y)
   local r=flr(rot/rot_del)
+  local dx=0
+  local dy=0
   pal()
   if r>9 then
    pal(8,10)
    pal(10,8)
   end
+  if mov!=0 then
+   local h=me.heading()
+   dx=(col_delta[h]-row_delta[h])*mov/mov_del
+   dy=(col_delta[h]+row_delta[h])*mov/mov_del/2
+  end
   print(rot,0,0,7)
-  spr(96+r%10,x+4,y-9,1,2)
+  spr(96+r%10,x+dx+4,y+dy-9,1,2)
  end --draw()
 
  return me
@@ -186,15 +235,17 @@ function _update()
 end
 
 mapmodel=map_model()
-mapmodel.units[4][4].player=1
-mapmodel.units[2][4].player=2
-mapmodel.units[6][4].player=4
-mapmodel.units[8][4].player=5
-mapmodel.units[8][6].player=6
-mapmodel.units[6][6].player=7
-mapmodel.units[4][6].player=8
+--mapmodel.units[4][4].player=1
+--mapmodel.units[2][4].player=2
+--mapmodel.units[6][4].player=4
+--mapmodel.units[8][4].player=5
+--mapmodel.units[8][6].player=6
+--mapmodel.units[6][6].player=7
 mapview=map_view(mapmodel)
 player=player()
+mapmodel.units[4][4].add_mover(
+ player
+)
 clock=0
 __gfx__
 00000000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
