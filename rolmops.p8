@@ -8,6 +8,12 @@ row_delta[0]=-1
 
 map_unit={}
 
+function extend(clz,baseclz)
+ for k,v in pairs(baseclz) do
+  clz[k]=v
+ end
+end
+
 function map_unit:new(o)
  o=o or {}
  o=setmetatable(o,self)
@@ -199,17 +205,11 @@ function map_view(_model)
  return me
 end --map_view
 
-player={}
+mover={}
 
--- player constants, defined
--- globally for conciseness
-rot_del=2 -- delay
-rot_max=20*rot_del
-mov_del=2
-mov_max=4*mov_del
-
-function player:new()
- local o=setmetatable({},self)
+function mover:new(o)
+ o=o or {}
+ local o=setmetatable(o,self)
  self.__index=self
 
  o.rot=0     -- [0..rot_max>
@@ -219,73 +219,35 @@ function player:new()
  o.mov=0     -- <-mov_max,mov_max]
  o.mov_inc=1 -- -1,1
 
+ -- height tolerance
+ o.tol=o.tol or 0
+
+ -- rotation speed
+ o.rot_del=o.rot_del or 2
+ o.rot_turn=5*o.rot_del
+ o.rot_max=4*o.rot_turn
+
+ -- move speed
+ o.mov_del=o.mov_del or 2
+ o.mov_max=4*o.mov_del
+
  return o
 end
 
-function player:update()
- if self.rot_dir!=0 then
-  -- turning
-  self.rot+=self.rot_dir+rot_max
-  self.rot%=rot_max
-  if self.rot%(5*rot_del)==0 then
-   -- finished turn
-   self.rot_dir=0
-  end
- elseif self.mov_dir!=0 then
-  -- moving
-  self.mov+=self.mov_inc
-  if self.mov==2*mov_del then
-   -- about to enter next unit
-   local to_unit=self.unit:neighbour(
-    (
-     self:heading()+
-     self.move_dir+3
-    )%4
-   )
-   if to_unit.height>self.unit.height then
-    -- cannot move, retreat
-    self.mov_inc=-1
-    self.mov+=self.mov_inc
-    sfx(0)
-   else
-    -- entered destination unit
-    self.unit2=to_unit
-   end
-  elseif self.mov==mov_max then
-   -- halfway crossing
-   local from_unit=self.unit
-   self.unit2:add_mover(self)
-   self.unit2=from_unit
-   self.mov=-mov_max+1
-  elseif self.mov==-2*mov_del then
-   -- exited source unit
-   self.unit2=nil
-  elseif self.mov==0 then
-   -- done
-   self.mov_dir=0
-   self.mov_inc=1
-  end
- elseif btnp(0) then
-  self.rot_dir=-1
- elseif btnp(1) then
-  self.rot_dir=1
- elseif btn(2) then
-  self.mov_dir=1
- elseif btn(3) then
-  self.mov_dir=-1
- end
- if self.unit.height<-8 then
-  -- todo: die
-  self:reset()
- end
-end --update()
-
-function player:heading()
- return flr(self.rot/5/rot_del)
+function mover:turning()
+ return self.rot_dir!=0
 end
 
-function player:draw(x,y)
- local r=flr(self.rot/rot_del)
+function mover:moving()
+ return self.mov_dir!=0
+end
+
+function mover:heading()
+ return flr(self.rot/self.rot_turn)
+end
+
+function mover:draw(x,y)
+ local r=flr(self.rot/self.rot_del)
  local dx=0
  local dy=0
  pal()
@@ -293,15 +255,15 @@ function player:draw(x,y)
   pal(8,10)
   pal(10,8)
  end
- if self.mov!=0 then
+ if self:moving() then
   local h=self:heading()
   dx=flr(
    (col_delta[h]-row_delta[h])
-   *self.mov/mov_del+0.5
+   *self.mov/self.mov_del+0.5
   )*self.mov_dir
   dy=flr(
    (col_delta[h]+row_delta[h])
-   *self.mov/mov_del/2+0.5
+   *self.mov/self.mov_del/2+0.5
   )*self.mov_dir
   if self.unit2!=nil then
    local dheight=(
@@ -311,9 +273,98 @@ function player:draw(x,y)
    dy-=max(0,dheight)
   end
  end
- print(self.rot..","..self.mov,0,0,7)
  spr(96+r%10,x+dx+4,y+dy-9,1,2)
-end --draw()
+end --mover:draw()
+
+function mover:update()
+ if self:turning() then
+  self.rot+=self.rot_dir+self.rot_max
+  self.rot%=self.rot_max
+  if self.rot%(5*self.rot_del)==0 then
+   -- finished turn
+   self.rot_dir=0
+  end
+ elseif self:moving() then
+  self.mov+=self.mov_inc
+  if self.mov==2*self.mov_del then
+   -- about to enter next unit
+   local to_unit=self.unit:neighbour(
+    (
+     self:heading()+
+     self.mov_dir+3
+    )%4
+   )
+   if to_unit.height-self.unit.height>self.tol then
+    -- cannot move, retreat
+    self.mov_inc=-1
+    self.mov+=self.mov_inc
+    sfx(0)
+   else
+    -- entered destination unit
+    self.unit2=to_unit
+   end
+  elseif self.mov==self.mov_max then
+   -- halfway crossing
+   local from_unit=self.unit
+   self.unit2:add_mover(self)
+   self.unit2=from_unit
+   self.mov=-self.mov_max+1
+  elseif self.mov==-2*self.mov_del then
+   -- exited source unit
+   self.unit2=nil
+  elseif self.mov==0 then
+   -- done
+   self.mov_dir=0
+   self.mov_inc=1
+  end
+ end
+end --mover:update()
+
+player={}
+extend(player,mover)
+
+function player:new(o)
+ o=mover.new(self,o)
+ for k,v in pairs(o) do
+  print(k)
+ end
+ print("o.rot_del="..o.rot_del)
+ local o=setmetatable(o,self)
+ self.__index=self
+
+ o.nxt_rot_dir=nil
+
+ return o
+end
+
+function player:update()
+ if btnp(0) then
+  self.nxt_rot_dir=-1
+ elseif btnp(1) then
+  self.nxt_rot_dir=1
+ end
+ 
+ if (
+  not self:moving() and 
+  not self:turning()
+ ) then
+  if self.nxt_rot_dir!=nil then
+   self.rot_dir=self.nxt_rot_dir
+   self.nxt_rot_dir=nil
+  elseif btn(2) then
+   self.mov_dir=1
+  elseif btn(3) then
+   self.mov_dir=-1
+  end
+ end
+
+ mover.update(self)
+
+ if self.unit.height<-8 then
+  -- todo: die
+  self:reset()
+ end
+end --update()
 
 function player:reset()
  mapmodel.units[5][5]:add_mover(
