@@ -14,10 +14,11 @@ function extend(clz,baseclz)
  end
 end
 
-function map_unit:new(o)
+function map_unit:new(_mapmodel,o)
  o=o or {}
  o=setmetatable(o,self)
  self.__index=self
+ o.mapmodel=_mapmodel
  o.tiletype=o.tiletype or 0
  o.height0=o.height0 or 0
  o.flex=o.flex or 1
@@ -49,7 +50,7 @@ function map_unit:tostring()
 end
 
 function map_unit:neighbour(heading)
- return mapmodel.units[
+ return self.mapmodel.units[
   self.col+col_delta[heading]
  ][
   self.row+row_delta[heading]
@@ -115,7 +116,7 @@ function map_model:new(angle)
     unit.tiletype=tt
     unit.flex=tt
    end
-   o.units[c][r]=map_unit:new(unit)
+   o.units[c][r]=map_unit:new(o,unit)
   end
  end
 
@@ -153,7 +154,7 @@ function isoline:add(unit)
  add(self.units,unit)
 end
 
-function map_view(_model)
+function new_mapview(_model)
  local me={}
  local model=_model
  local isolines={}
@@ -172,7 +173,7 @@ function map_view(_model)
   end
  end
 
- me.draw=function()
+ function me.draw()
   cls()
   for i=1,nlines do
    local units=isolines[i].units
@@ -325,10 +326,6 @@ extend(player,mover)
 
 function player:new(o)
  o=mover.new(self,o)
- for k,v in pairs(o) do
-  print(k)
- end
- print("o.rot_del="..o.rot_del)
  local o=setmetatable(o,self)
  self.__index=self
 
@@ -343,9 +340,9 @@ function player:update()
  elseif btnp(1) then
   self.nxt_rot_dir=1
  end
- 
+
  if (
-  not self:moving() and 
+  not self:moving() and
   not self:turning()
  ) then
   if self.nxt_rot_dir!=nil then
@@ -361,31 +358,52 @@ function player:update()
  mover.update(self)
 
  if self.unit.height<-8 then
-  -- todo: die
-  self:reset()
+  game.player_death()
  end
 end --update()
 
-function player:reset()
- mapmodel.units[5][5]:add_mover(
-  self
- )
+function new_game()
+ me={}
+
+ local mapmodel=map_model:new()
+ local mapview=new_mapview(mapmodel)
+ local player1=player:new()
+
+ function me.draw()
+  mapview:draw()
+ end
+
+ function me.update()
+  clock+=1
+  mapmodel:update()
+  player1:update()
+ end
+
+ function me.reset()
+  mapmodel.units[5][5]:add_mover(
+   player1
+  )
+ end
+
+ function me.player_death()
+  me.reset()
+ end
+
+ me.reset()
+
+ return me
 end
 
+game=new_game()
+
 function _draw()
- mapview.draw()
+ game.draw()
 end
 
 function _update()
- clock+=1
- mapmodel:update()
- player1:update()
+ game.update()
 end
 
-mapmodel=map_model:new()
-mapview=map_view(mapmodel)
-player1=player:new()
-player1:reset()
 clock=0
 __gfx__
 00000000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
