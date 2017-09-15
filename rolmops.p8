@@ -14,6 +14,13 @@ function extend(clz,baseclz)
  end
 end
 
+function distance(unit1,unit2)
+ return (
+  abs(unit1.col-unit2.col)+
+  abs(unit1.row-unit2.row)
+ )
+end
+
 function map_unit:new(_mapmodel,o)
  o=o or {}
  o=setmetatable(o,self)
@@ -50,11 +57,16 @@ function map_unit:tostring()
 end
 
 function map_unit:neighbour(heading)
- return self.mapmodel.units[
-  self.col+col_delta[heading]
- ][
-  self.row+row_delta[heading]
- ]
+ local c=self.col+col_delta[heading]
+ local r=self.row+row_delta[heading]
+ if (
+  c<1 or c>self.mapmodel.ncol or
+  r<1 or r>self.mapmodel.nrow
+ ) then
+  return nil
+ else
+  return self.mapmodel.units[c][r]
+ end
 end
 
 dirwave={}
@@ -251,7 +263,6 @@ function mover:draw(x,y)
  local r=flr(self.rot/self.rot_del)
  local dx=0
  local dy=0
- pal()
  if r>9 then
   pal(8,10)
   pal(10,8)
@@ -299,7 +310,7 @@ function mover:update()
     -- cannot move, retreat
     self.mov_inc=-1
     self.mov+=self.mov_inc
-    sfx(0)
+    self:bump()
    else
     -- entered destination unit
     self.unit2=to_unit
@@ -321,6 +332,10 @@ function mover:update()
  end
 end --mover:update()
 
+function mover:bump()
+ --noop
+end
+
 player={}
 extend(player,mover)
 
@@ -332,6 +347,11 @@ function player:new(o)
  o.nxt_rot_dir=nil
 
  return o
+end
+
+function player:draw(x,y)
+ pal()
+ mover.draw(self,x,y)
 end
 
 function player:update()
@@ -362,12 +382,114 @@ function player:update()
  end
 end --update()
 
+function player:bump()
+ sfx(0)
+end
+
+enemy={}
+extend(enemy,mover)
+
+function enemy:new(o)
+ o=mover.new(self,o)
+ local o=setmetatable(o,self)
+ self.__index=self
+
+ o.dazed=0
+
+ return o
+end
+
+function enemy:draw(x,y)
+ pal()
+ pal(12,14)
+ pal(1,2)
+ mover.draw(self,x,y)
+end
+
+function enemy:update()
+ if self.dazed>0 then
+  self.dazed-=1
+ end
+
+ if (
+  not self:moving() and
+  not self:turning()
+ )
+ then
+  local best_rotdir=0
+  local best_score=nil
+  for rotdir=-1,1 do
+   local h=(self:heading()+rotdir+4)%4
+   local s=self:heading_score(h)
+   if best_score==nil or s>best_score then
+    best_rotdir=rotdir
+    best_score=s
+   end
+  end
+
+  self.rot_dir=best_rotdir
+ end
+
+ if (
+  not self:turning() and
+  self.dazed<=0
+ ) then
+  self.mov_dir=1
+ end
+
+ mover.update(self)
+end --enemy:update
+
+function enemy:heading_score(h)
+ local score=0
+ local to_unit=self.unit:neighbour(h)
+ local target_unit=game.player.unit
+
+ if to_unit==nil or to_unit.height<-5 then
+  return -99
+ end
+
+ if (
+  distance(to_unit, target_unit) <
+  distance(self.unit, target_unit)
+ ) then
+  --reward getting closer
+  score+=4
+ end
+
+ if h==self:heading() then
+  --prefer moving straight
+  score+=1
+ end
+
+ local hdelta=
+  to_unit.height-self.unit.height-self.tol
+ if hdelta<=0 then
+  --reward possible movement
+  score+=2
+ else
+  --penalize climbs
+  score-=min(hdelta,5)
+ end
+
+ return score
+end --enemy:heading_score
+
+function enemy:bump()
+ self.dazed=10+flr(rnd(20))
+end
+
 function new_game()
  me={}
 
  local mapmodel=map_model:new()
  local mapview=new_mapview(mapmodel)
- local player1=player:new()
+ local enemies={}
+
+ me.player=player:new()
+
+ add(enemies,enemy:new())
+ add(enemies,enemy:new())
 
  function me.draw()
   mapview:draw()
@@ -376,14 +498,23 @@ function new_game()
  function me.update()
   clock+=1
   mapmodel:update()
-  player1:update()
+  me.player:update()
+  for e in all(enemies) do
+   e:update()
+  end
  end
 
  function me.reset()
   mapmodel.units[5][5]:add_mover(
-   player1
+   me.player
   )
- end
+  mapmodel.units[2][2]:add_mover(
+   enemies[1]
+  )
+  mapmodel.units[9][9]:add_mover(
+   enemies[2]
+  )
+  end
 
  function me.player_death()
   me.reset()
