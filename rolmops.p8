@@ -118,7 +118,7 @@ function map_model:new(angle)
    unit.row=r
    if is_border then
     unit.tiletype=0
-    unit.height0=-10
+    unit.height0=-255
     unit.flex=0
    else
     local tt=1
@@ -247,6 +247,8 @@ function mover:new(o)
  o.mov_del=o.mov_del or 2
  o.mov_max=4*o.mov_del
 
+ o.drop_speed=1
+
  return o
 end
 
@@ -280,13 +282,27 @@ function mover:draw(x,y)
    (col_delta[h]+row_delta[h])
    *self.mov/self.mov_del/2+0.5
   )*self.mov_dir
+
+  -- adapt height if needed
+  local height=self.unit.height
   if self.unit2!=nil then
-   local dheight=(
-    self.unit2.height-
-    self.unit.height
-   )
-   dy-=max(0,dheight)
+   --on two tiles, follow highest
+   height=max(height,self.unit2.height)
   end
+  if (
+   self.prev_height!=nil and
+   self.prev_height>height
+  ) then
+   --gradual fall
+   height=max(
+    height,self.prev_height-self.drop_speed
+   )
+   self.drop_speed+=0.1
+  else
+   self.drop_speed=1
+  end
+  self.prev_height=height
+  dy -= height-self.unit.height
  end
  spr(96+r%10,x+dx+4,y+dy-9,1,2)
 end --mover:draw()
@@ -380,7 +396,11 @@ function player:update()
 
  mover.update(self)
 
- if self.unit.height<-8 then
+ if (
+  self.unit.height<-50 and
+  self.unit2==nil
+ )
+ then
   game.signal_death()
  end
 end --update()
