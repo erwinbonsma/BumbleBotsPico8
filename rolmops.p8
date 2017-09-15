@@ -381,7 +381,7 @@ function player:update()
  mover.update(self)
 
  if self.unit.height<-8 then
-  game.player_death()
+  game.signal_death()
  end
 end --update()
 
@@ -412,6 +412,10 @@ end
 function enemy:update()
  if self.dazed>0 then
   self.dazed-=1
+ end
+
+ if self.unit==game.player.unit then
+  game:signal_death()
  end
 
  if (
@@ -483,11 +487,13 @@ function enemy:bump()
 end
 
 function new_game()
- me={}
+ local me={}
 
  local mapmodel=map_model:new()
  local mapview=new_mapview(mapmodel)
  local enemies={}
+ local anim=nil
+ local lives=3
 
  me.player=player:new()
 
@@ -496,18 +502,36 @@ function new_game()
 
  function me.draw()
   mapview:draw()
+  for i=1,lives do
+   pal()
+   spr(100,i*10-8,-4,1,2)
+  end
+  if anim!=nil then
+   anim.draw()
+  end
  end
 
  function me.update()
-  clock+=1
   mapmodel:update()
+
+  if anim!=nil then
+   if anim.update() then
+    anim=nil
+   end
+   return
+  end
+
   me.player:update()
   for e in all(enemies) do
    e:update()
   end
+  if me.death_signalled then
+   me:handle_death()
+  end
  end
 
  function me.reset()
+  me.death_signalled=false
   mapmodel.units[5][5]:add_mover(
    me.player
   )
@@ -517,16 +541,78 @@ function new_game()
   mapmodel.units[9][9]:add_mover(
    enemies[2]
   )
-  end
+ end
 
- function me.player_death()
-  me.reset()
+ function me.signal_death()
+  me.death_signalled=true
+ end
+
+ function me.handle_death()
+  lives-=1
+  if lives>0 then
+   anim=die_animation()
+  else
+   anim=game_over_animation()
+  end
  end
 
  me.reset()
 
  return me
-end
+end --new_game()
+
+function die_animation()
+ local me={}
+
+ local clk=0
+
+ function me.update()
+  clk+=1
+
+  if clk==1 then
+   sfx(1)
+  end
+
+  if clk==100 then
+   game.reset()
+   return true
+  end
+
+  return false
+ end
+
+ function me.draw()
+  print("careful now",40,60,0)
+  print("careful now",41,61,8)
+ end
+
+ return me
+end --die_animation
+
+function game_over_animation()
+ local me={}
+
+ local clk=0
+
+ function me.update()
+  clk+=1
+
+  if clk==1 then
+   sfx(1)
+  end
+
+  if clk==100 then
+   game=new_game()
+  end
+ end
+
+ function me.draw()
+  print("game over",40,60,0)
+  print("game over",41,61,8)
+ end
+
+ return me
+end --game_over_animation
 
 game=new_game()
 
@@ -535,6 +621,7 @@ function _draw()
 end
 
 function _update()
+ clock+=1
  game.update()
 end
 
@@ -707,7 +794,7 @@ __map__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 000100001e0501a750000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010a00001d0501d0501c0501c0501805118052180421803218025186000c6000c6000c6000c600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
