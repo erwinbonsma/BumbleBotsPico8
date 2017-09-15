@@ -1,6 +1,9 @@
 pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
+-- bumping bots
+-- (c) 2017, erwin bonsma
+
 col_delta={1,0,-1}
 row_delta={0,1,0}
 col_delta[0]=0
