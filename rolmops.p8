@@ -109,7 +109,7 @@ end
 
 map_model={}
 
-function map_model:new(angle)
+function map_model:new()
  local o=setmetatable({},self)
  self.__index=self
 
@@ -266,6 +266,10 @@ function mover:new(o)
  o.dazed=0
 
  return o
+end
+
+function mover:destroy()
+ self.unit:remove_mover(self)
 end
 
 function mover:turning()
@@ -461,10 +465,12 @@ end
 enemy={}
 extend(enemy,mover)
 
-function enemy:new(o)
+function enemy:new(target,o)
  o=mover.new(self,o)
  local o=setmetatable(o,self)
  self.__index=self
+ 
+ o.target=target
 
  return o
 end
@@ -477,7 +483,7 @@ function enemy:draw(x,y)
 end
 
 function enemy:update()
- if self.unit==game.player.unit then
+ if self.unit==self.target.unit then
   game:signal_death()
  end
 
@@ -513,7 +519,7 @@ end --enemy:update
 function enemy:heading_score(h)
  local score=0
  local to_unit=self.unit:neighbour(h)
- local target_unit=game.player.unit
+ local target_unit=self.target.unit
 
  if to_unit==nil or to_unit.height<-5 then
   return -99
@@ -568,22 +574,103 @@ function pickup:pickup(actor)
  self.unit.remove_pickup(self)
 end
 
+level={}
+
+function level:new(o)
+ o=o or {}
+ local o=setmetatable(o,self)
+ self.__index=self
+
+ o.pickups={}
+ o.enemies={}
+
+ return o
+end
+
+function level:init_map(map_model)
+ self.map_model=map_model
+ self.map_view=new_mapview(map_model)
+end
+
+function level:add_player(col,row)
+ self.player=player:new()
+ self.map_model.units[col][row]:add_mover(
+  self.player
+ )
+end
+
+function level:add_enemy(col,row,enemy)
+ self.map_model.units[col][row]:add_mover(
+  enemy
+ )
+ add(self.enemies,enemy)
+end
+
+function level:add_pickup(col,row,pickup)
+ self.map_model.units[col][row]:add_pickup(
+  pickup
+ )
+ add(self.pickups,pickup)
+end
+
+function level:reset()
+ for e in all(self.enemies) do
+  e:destroy()
+ end
+ self.enemies={}
+ if self.player!=nil then
+  self.player:destroy()
+  self.player=nil
+ end
+end
+
+function level:update(only_map)
+ self.map_model:update()
+
+ if not only_map then
+  self.player:update()
+  for e in all(self.enemies) do
+   e:update()
+  end
+ end
+end
+
+function level:draw()
+ self.map_view.draw()
+end
+
+level1={}
+extend(level1,level)
+
+function level1:new(o)
+ o=level.new(self,o)
+ local o=setmetatable(o,self)
+ self.__index=self
+
+ o:init_map(map_model:new())
+
+ o:add_pickup(2,9,pickup:new())
+ o:add_pickup(9,2,pickup:new())
+
+ return o
+end
+
+function level1:reset()
+ level.reset(self)
+ self:add_player(5,5)
+ self:add_enemy(2,2,enemy:new(self.player))
+ self:add_enemy(9,9,enemy:new(self.player))
+end
+
 function new_game()
  local me={}
 
- local mapmodel=map_model:new()
- local mapview=new_mapview(mapmodel)
- local enemies={}
  local anim=nil
  local lives=3
-
- me.player=player:new()
-
- add(enemies,enemy:new())
- add(enemies,enemy:new())
+ local level=level1:new()
 
  function me.draw()
-  mapview:draw()
+  level:draw()
   for i=1,lives do
    spr(100,i*10-8,-4,1,2)
   end
@@ -593,41 +680,22 @@ function new_game()
  end
 
  function me.update()
-  mapmodel:update()
-
-  if anim!=nil then
-   if anim.update() then
-    anim=nil
-   end
-   return
+  if (
+   anim!=nil and
+   anim.update()
+  ) then
+   anim=nil
   end
 
-  me.player:update()
-  for e in all(enemies) do
-   e:update()
-  end
+  level:update(anim!=nil)
+
   if me.death_signalled then
    me:handle_death()
   end
  end
 
  function me.reset()
-  me.death_signalled=false
-  mapmodel.units[5][5]:add_mover(
-   me.player
-  )
-  mapmodel.units[2][2]:add_mover(
-   enemies[1]
-  )
-  mapmodel.units[9][9]:add_mover(
-   enemies[2]
-  )
-  mapmodel.units[2][9]:add_pickup(
-   pickup:new()
-  )
-  mapmodel.units[9][2]:add_pickup(
-   pickup:new()
-  )
+  level:reset()
  end
 
  function me.signal_death()
@@ -641,6 +709,7 @@ function new_game()
   else
    anim=game_over_animation()
   end
+  me.death_signalled=false
  end
 
  me.reset()
