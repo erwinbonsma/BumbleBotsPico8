@@ -11,17 +11,26 @@ row_delta[0]=-1
 
 map_unit={}
 
+-- class inheritance
 function extend(clz,baseclz)
  for k,v in pairs(baseclz) do
   clz[k]=v
  end
 end
 
+-- manhattan city distance
 function distance(unit1,unit2)
  return (
   abs(unit1.col-unit2.col)+
   abs(unit1.row-unit2.row)
  )
+end
+
+function message_box(msg)
+ local x=63-#msg*2
+ local y=61
+ rectfill(x,y-1,x+#msg*4,y+5,0)
+ print(msg,x+1,y,10)
 end
 
 function map_unit:new(_mapmodel,o)
@@ -633,13 +642,15 @@ function level:draw()
  self.map_view.draw()
 end
 
-level1={}
-extend(level1,level)
+leveldef={}
+extend(leveldef,level)
 
-function level1:new(o)
+function leveldef:new(o)
  o=level.new(self,o)
  local o=setmetatable(o,self)
  self.__index=self
+
+ o.num_enemies=o.num_enemies or 1
 
  o:init_map(map_model:new())
 
@@ -651,20 +662,33 @@ function level1:new(o)
  return o
 end
 
-function level1:reset()
+function leveldef:reset()
  level.reset(self)
  self:add_player(5,6)
- self:add_enemy(3,3,enemy:new(self.player))
- self:add_enemy(8,8,enemy:new(self.player))
+
+ local enemy_pos={
+  {3,3},{8,8},{3,8},{8,3}
+ }
+ for i=1,min(
+  self.num_enemies,#enemy_pos
+ ) do
+  self:add_enemy(
+   enemy_pos[i][1],
+   enemy_pos[i][2],
+   enemy:new(self.player)
+  )
+ end
 end
 
 function new_game()
  local me={}
 
  local anim=nil
+ local level_num=0
  local lives=3
- local level=level1:new()
  local pickups={}
+ local level=nil
+ local death_signalled
 
  function me.draw()
   level:draw()
@@ -689,10 +713,16 @@ function new_game()
    anim=nil
   end
 
+  death_signalled=false
+
   level:update(anim!=nil)
 
-  if me.death_signalled then
-   me:handle_death()
+  if (anim==nil) then
+   if #pickups==#level.pickups then
+    me:level_done()
+   elseif death_signalled then
+    me:handle_death()
+   end
   end
  end
 
@@ -701,7 +731,7 @@ function new_game()
  end
 
  function me.signal_death()
-  me.death_signalled=true
+  death_signalled=true
  end
 
  function me.handle_death()
@@ -711,14 +741,26 @@ function new_game()
   else
    anim=game_over_animation()
   end
-  me.death_signalled=false
  end
 
  function me.signal_pickup(pickup)
   add(pickups,pickup)
  end
 
- me.reset()
+ function me.level_done()
+  anim=level_done_animation()
+ end
+
+ function me.next_level()
+  level_num+=1
+  level=leveldef:new(
+   {num_enemies=level_num}
+  )
+  pickups={}
+  level:reset()
+ end
+
+ me.next_level()
 
  return me
 end --new_game()
@@ -744,8 +786,7 @@ function die_animation()
  end
 
  function me.draw()
-  print("careful now",40,60,0)
-  print("careful now",41,61,8)
+  message_box("careful now")
  end
 
  return me
@@ -769,12 +810,36 @@ function game_over_animation()
  end
 
  function me.draw()
-  print("game over",40,60,0)
-  print("game over",41,61,8)
+  message_box("game over")
  end
 
  return me
 end --game_over_animation
+
+function level_done_animation()
+ local me={}
+
+ local clk=0
+
+ function me.update()
+  clk+=1
+
+  if clk==1 then
+   --sfx(2)
+  end
+
+  if clk==100 then
+   game.next_level()
+   return true
+  end
+ end
+
+ function me.draw()
+  message_box("level completed!")
+ end
+
+ return me
+end --level_done_animation
 
 game=new_game()
 
