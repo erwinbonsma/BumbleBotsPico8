@@ -216,6 +216,9 @@ function new_mapview(_model)
      pal()
     end
 
+    x+=4
+    y-=2
+
     if unit.pickup!=nil then
      unit.pickup:draw(x,y)
     end
@@ -333,7 +336,7 @@ function mover:draw(x,y)
   self.prev_height=height
   dy -= height-self.unit.height
  end
- spr(96+r%10,x+dx+4,y+dy-9,1,2)
+ spr(96+r%10,x+dx,y+dy-7,1,2)
  pal()
 end --mover:draw()
 
@@ -405,10 +408,6 @@ function player:new(o)
  return o
 end
 
-function player:draw(x,y)
- mover.draw(self,x,y)
-end
-
 function player:update()
  if btnp(0) then
   self.nxt_rot_dir=-1
@@ -452,7 +451,6 @@ function player:enter_unit(unit)
  if unit.pickup!=nil then
   unit.pickup:pickup(self)
   unit.pickup=nil
-  sfx(3)
  end
 end
 
@@ -561,11 +559,13 @@ function pickup:new(o)
 end
 
 function pickup:draw(x,y)
- spr(64,x+5,y-2,1,1)
+ spr(64,x,y,1,1)
 end
 
 function pickup:pickup(actor)
  self.unit.remove_pickup(self)
+ game.signal_pickup(self)
+ sfx(3)
 end
 
 level={}
@@ -643,17 +643,19 @@ function level1:new(o)
 
  o:init_map(map_model:new())
 
+ o:add_pickup(2,2,pickup:new())
  o:add_pickup(2,9,pickup:new())
  o:add_pickup(9,2,pickup:new())
+ o:add_pickup(9,9,pickup:new())
 
  return o
 end
 
 function level1:reset()
  level.reset(self)
- self:add_player(5,5)
- self:add_enemy(2,2,enemy:new(self.player))
- self:add_enemy(9,9,enemy:new(self.player))
+ self:add_player(5,6)
+ self:add_enemy(3,3,enemy:new(self.player))
+ self:add_enemy(8,8,enemy:new(self.player))
 end
 
 function new_game()
@@ -662,11 +664,17 @@ function new_game()
  local anim=nil
  local lives=3
  local level=level1:new()
+ local pickups={}
 
  function me.draw()
   level:draw()
   for i=1,lives do
    spr(100,i*10-8,-4,1,2)
+  end
+  local x=120
+  for pickup in all(pickups) do
+   pickup:draw(x,0)
+   x-=9
   end
   if anim!=nil then
    anim.draw()
@@ -704,6 +712,10 @@ function new_game()
    anim=game_over_animation()
   end
   me.death_signalled=false
+ end
+
+ function me.signal_pickup(pickup)
+  add(pickups,pickup)
  end
 
  me.reset()
