@@ -201,14 +201,13 @@ function new_mapview(_model)
 
     if unit.tiletype!=0 then
      if (i%2)==0 then
-      pal()
-     else
       c=tilecolors[unit.tiletype]
       pal(5,c[1])
       pal(6,c[2])
       pal(7,c[3])
      end
      spr(0,x,y,2,3)
+     pal()
     end
 
     for mover in all(unit.movers) do
@@ -248,6 +247,7 @@ function mover:new(o)
  o.mov_max=4*o.mov_del
 
  o.drop_speed=1
+ o.dazed=0
 
  return o
 end
@@ -260,6 +260,10 @@ function mover:moving()
  return self.mov_dir!=0
 end
 
+function mover:is_dazed()
+ return self.dazed>0
+end
+
 function mover:heading()
  return flr(self.rot/self.rot_turn)
 end
@@ -269,8 +273,19 @@ function mover:draw(x,y)
  local dx=0
  local dy=0
  if r>9 then
+  --invert rear/front lights
   pal(8,10)
   pal(10,8)
+ end
+ if self:is_dazed() then
+  --show animated dazed "bugs"
+  local c=band(self.dazed,4)/4
+  palt(5+c,true)
+  pal(6-c,9)
+ else
+  --hide dazed "bugs"
+  palt(5,true)
+  palt(6,true)
  end
  if self:moving() then
   local h=self:heading()
@@ -309,6 +324,10 @@ function mover:draw(x,y)
 end --mover:draw()
 
 function mover:update()
+ if self.dazed>0 then
+  self.dazed-=1
+ end
+
  if self:turning() then
   self.rot+=self.rot_dir+self.rot_max
   self.rot%=self.rot_max
@@ -353,7 +372,7 @@ function mover:update()
 end --mover:update()
 
 function mover:bump()
- --noop
+ self.dazed=20
 end
 
 player={}
@@ -382,7 +401,8 @@ function player:update()
 
  if (
   not self:moving() and
-  not self:turning()
+  not self:turning() and
+  not self:is_dazed()
  ) then
   if self.nxt_rot_dir!=nil then
    self.rot_dir=self.nxt_rot_dir
@@ -406,6 +426,7 @@ function player:update()
 end --update()
 
 function player:bump()
+ mover.bump(self)
  sfx(0)
 end
 
@@ -416,8 +437,6 @@ function enemy:new(o)
  o=mover.new(self,o)
  local o=setmetatable(o,self)
  self.__index=self
-
- o.dazed=0
 
  return o
 end
@@ -430,38 +449,34 @@ function enemy:draw(x,y)
 end
 
 function enemy:update()
- if self.dazed>0 then
-  self.dazed-=1
- end
-
  if self.unit==game.player.unit then
   game:signal_death()
  end
 
- if (
-  not self:moving() and
-  not self:turning()
- )
- then
-  local best_rotdir=0
-  local best_score=nil
-  for rotdir=-1,1 do
-   local h=(self:heading()+rotdir+4)%4
-   local s=self:heading_score(h)
-   if best_score==nil or s>best_score then
-    best_rotdir=rotdir
-    best_score=s
+ if not self:is_dazed() then
+  if (
+   not self:moving() and
+   not self:turning()
+  )
+  then
+   --to turn or not to turn?
+   local best_rotdir=0
+   local best_score=nil
+   for rotdir=-1,1 do
+    local h=(self:heading()+rotdir+4)%4
+    local s=self:heading_score(h)
+    if best_score==nil or s>best_score then
+     best_rotdir=rotdir
+     best_score=s
+    end
    end
+
+   self.rot_dir=best_rotdir
   end
 
-  self.rot_dir=best_rotdir
- end
-
- if (
-  not self:turning() and
-  self.dazed<=0
- ) then
-  self.mov_dir=1
+  if not self:turning() then
+   self.mov_dir=1
+  end
  end
 
  mover.update(self)
@@ -503,7 +518,8 @@ function enemy:heading_score(h)
 end --enemy:heading_score
 
 function enemy:bump()
- self.dazed=10+flr(rnd(20))
+ mover.bump(self)
+ self.dazed+=flr(rnd(20))-10
 end
 
 function new_game()
@@ -695,10 +711,10 @@ __gfx__
 0000000000000000000000000000000000000eddd2d00000000eeddddd2220000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000eddd2d000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00065000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000650000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00605600000000000000000000000000000000000056000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00506500000000000000000000000000000000000000560000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000c00000000c000000000000c00000000c00000000c00000000c000000000000c00000000c0000000000000000000000000000000000000000000000000000
 00ccccc000ccccc00cccccc00ccccc000ccccc0000ccccc000ccccc00cccccc00ccccc000ccccc00000000000000000000000000000000000000000000000000
