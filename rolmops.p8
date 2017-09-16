@@ -133,13 +133,7 @@ function map_model:new()
     unit.height0=-255
     unit.flex=0
    else
-    local tt=1
-    if c>o.ncol/2 then
-     tt+=1
-    end
-    if r>o.nrow/2 then
-     tt+=2
-    end
+    local tt=3
     unit.tiletype=tt
     unit.flex=tt
    end
