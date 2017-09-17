@@ -122,12 +122,15 @@ function map_unit:setwave(wave)
   self.flex*wave
 end
 
+-- adds the mover for drawing
+-- purposes. it may not yet
+-- have entered the unit
 function map_unit:add_mover(mover)
- if (mover.unit!=nil) then
-  mover.unit:remove_mover(mover)
+ if (mover.draw_unit!=nil) then
+  mover.draw_unit:remove_mover(mover)
  end
  add(self.movers,mover)
- mover.unit=self
+ mover.draw_unit=self
 end
 
 function map_unit:remove_mover(mover)
@@ -340,7 +343,7 @@ function mover:new(o)
 
  -- move speed
  o.mov_del=o.mov_del or 2
- o.mov_max=4*o.mov_del
+ o.mov_max=8*o.mov_del
 
  o.drop_speed=1
  o.dazed=0
@@ -349,7 +352,7 @@ function mover:new(o)
 end
 
 function mover:destroy()
- self.unit:remove_mover(self)
+ self.draw_unit:remove_mover(self)
 end
 
 function mover:turning()
@@ -387,6 +390,7 @@ function mover:draw(x,y)
   palt(5,true)
   palt(6,true)
  end
+ local height=self.unit.height
  if self:moving() then
   local h=self:heading()
   dx=flr(
@@ -399,26 +403,26 @@ function mover:draw(x,y)
   )*self.mov_dir
 
   -- adapt height if needed
-  local height=self.unit.height
   if self.unit2!=nil then
    --on two tiles, follow highest
    height=max(height,self.unit2.height)
   end
-  if (
-   self.prev_height!=nil and
-   self.prev_height>height
-  ) then
-   --gradual fall
-   height=max(
-    height,self.prev_height-self.drop_speed
-   )
-   self.drop_speed+=0.1
-  else
-   self.drop_speed=1
-  end
-  self.prev_height=height
-  dy -= height-self.unit.height
  end
+ if (
+  self.prev_height!=nil and
+  self.prev_height>height
+ ) then
+  --gradual fall
+  height=max(
+   height,self.prev_height-self.drop_speed
+  )
+  self.drop_speed+=0.1
+ else
+  self.drop_speed=1
+ end
+ self.prev_height=height
+ dy -= height-self.draw_unit.height
+
  spr(160+r%10,x+dx,y+dy-7,1,2)
  pal()
 end --mover:draw()
@@ -437,7 +441,10 @@ function mover:update()
   end
  elseif self:moving() then
   self.mov+=self.mov_inc
-  if self.mov==2*self.mov_del then
+  local relmov=(
+   self.mov+self.mov_max
+  )%self.mov_max
+  if relmov==self.mov_del then
    -- about to enter next unit
    local to_unit=self.unit:neighbour(
     (
@@ -445,21 +452,21 @@ function mover:update()
      self.mov_dir+3
     )%4
    )
-   if not self:can_enter(to_unit) then
+   if self:can_enter(to_unit) then
+    -- entered destination unit
+    self:entering_unit(to_unit)
+   else
     -- cannot move, retreat
     self.mov_inc=-1
     self.mov+=self.mov_inc
     self:bump()
-   else
-    -- entered destination unit
-    self.unit2=to_unit
    end
-  elseif self.mov==self.mov_max then
+  elseif relmov==4*self.mov_del then
    -- halfway crossing
-   self:enter_unit(self.unit2)
-  elseif self.mov==-2*self.mov_del then
+   self:enter_unit()
+  elseif relmov==7*self.mov_del then
    -- exited source unit
-   self.unit2=nil
+   self:exited_unit()
   elseif self.mov==0 then
    -- done
    self.mov_dir=0
@@ -476,10 +483,33 @@ function mover:can_enter(unit)
  return unit.height-self.unit.height<=self.tol
 end
 
-function mover:enter_unit(unit)
+function mover:entering_unit(to_unit)
+ --msg="entering:"..self.unit:tostring().."-"..to_unit:tostring()
+ self.unit2=to_unit
+
+ if (
+  to_unit.col+to_unit.row >
+  self.unit.col+self.unit.row
+ ) then
+  to_unit:add_mover(self)
+  self.mov-=self.mov_max
+ end
+end
+
+function mover:enter_unit()
+ --msg="emter:"..self.unit:tostring().."-"..self.unit2:tostring()
+ local unit=self.unit2
  self.unit2=self.unit
- unit:add_mover(self)
- self.mov=-self.mov_max+1
+ self.unit=unit
+end
+
+function mover:exited_unit()
+ --msg="exited_unit"
+ if (self.draw_unit!=self.unit) then
+  self.unit:add_mover(self)
+  self.mov-=self.mov_max
+ end
+ self.unit2=nil
 end
 
 player={}
@@ -539,11 +569,11 @@ function player:bump()
  sfx(0)
 end
 
-function player:enter_unit(unit)
- mover.enter_unit(self,unit)
- if unit.pickup!=nil then
-  unit.pickup:pickup(self)
-  unit.pickup=nil
+function player:enter_unit()
+ mover.enter_unit(self)
+ if self.unit.pickup!=nil then
+  self.unit.pickup:pickup(self)
+  self.unit.pickup=nil
  end
 end
 
@@ -687,15 +717,17 @@ end
 
 function level:add_player(col,row)
  self.player=player:new()
- self.map_model.units[col][row]:add_mover(
-  self.player
- )
+ local unit=
+  self.map_model.units[col][row]
+ unit:add_mover(self.player)
+ self.player.unit=unit
 end
 
 function level:add_enemy(col,row,enemy)
- self.map_model.units[col][row]:add_mover(
-  enemy
- )
+ local unit=
+  self.map_model.units[col][row]
+ unit:add_mover(enemy)
+ enemy.unit=unit
  add(self.enemies,enemy)
 end
 
@@ -794,6 +826,9 @@ function new_game()
   end
   if anim!=nil then
    anim.draw()
+  end
+  if msg!=nil then
+   print(msg,0,120,7)
   end
  end
 
