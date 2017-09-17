@@ -387,7 +387,7 @@ function mover:update()
      self.mov_dir+3
     )%4
    )
-   if to_unit.height-self.unit.height>self.tol then
+   if not self:can_enter(to_unit) then
     -- cannot move, retreat
     self.mov_inc=-1
     self.mov+=self.mov_inc
@@ -412,6 +412,10 @@ end --mover:update()
 
 function mover:bump()
  self.dazed=20
+end
+
+function mover:can_enter(unit)
+ return unit.height-self.unit.height<=self.tol
 end
 
 function mover:enter_unit(unit)
@@ -561,18 +565,24 @@ function enemy:heading_score(h)
   score+=1
  end
 
- local hdelta=
-  to_unit.height-self.unit.height-self.tol
- if hdelta<=0 then
+ if self:can_enter(to_unit) then
   --reward possible movement
   score+=2
  else
   --penalize climbs
-  score-=min(hdelta,5)
+  local hdelta=to_unit.height-self.unit.height-self.tol
+  score-=max(0,min(5,hdelta))
  end
 
  return score
 end --enemy:heading_score
+
+function enemy:can_enter(unit)
+ return (
+  mover.can_enter(self,unit) and
+  unit.pickup==nil
+ )
+end
 
 function enemy:bump()
  mover.bump(self)
@@ -689,7 +699,7 @@ function leveldef:reset()
  self:add_player(5,6)
 
  local enemy_pos={
-  {3,3},{8,8},{3,8},{8,3}
+  {3,3},{8,8},{8,3},{3,8}
  }
  for i=1,min(
   self.num_enemies,#enemy_pos
