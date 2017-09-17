@@ -444,7 +444,7 @@ function mover:update()
   local relmov=(
    self.mov+self.mov_max
   )%self.mov_max
-  if relmov==self.mov_del then
+  if relmov==2*self.mov_del-1 then
    -- about to enter next unit
    local to_unit=self.unit:neighbour(
     (
