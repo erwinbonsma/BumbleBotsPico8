@@ -11,6 +11,12 @@ row_delta={0,1,0}
 col_delta[0]=0
 row_delta[0]=-1
 
+--various 3-color color maps
+pallete_mapping={
+ {0,5,6},{1,13,12},
+ {10,9,4},{2,14,15}
+}
+
 --fields
 -- sprite index, sprite height,
 -- sprite y-delta,
@@ -242,18 +248,129 @@ function map_model:update()
  end
 end
 
-isoline={}
+isoline_pair={}
 
-function isoline:new()
+function isoline_pair:new(
+ leaf_left,
+ leaf_right,
+ height_from_right
+)
  local o=setmetatable({},self)
  self.__index=self
- o.units={}
+
+ if height_from_right then
+  o.leaf1=leaf_right
+  o.leaf2=leaf_left
+ else
+  o.leaf1=leaf_left
+  o.leaf2=leaf_right
+ end
 
  return o
 end
 
-function isoline:add(unit)
- add(self.units,unit)
+function isoline_pair:height()
+ return self.leaf1:height()
+end
+
+function isoline_pair:draw()
+ if (
+  self.leaf1:height()<
+  self.leaf2:height()
+ ) then
+  self.leaf1:draw()
+  self.leaf2:draw()
+ else
+  self.leaf2:draw()
+  self.leaf1:draw()
+ end
+end
+
+isoline_leaf={}
+
+function isoline_leaf:new(
+ map_unit
+)
+ local o=setmetatable({},self)
+ self.__index=self
+
+ o.map_unit=map_unit
+
+ return o
+end
+
+function isoline_leaf:height()
+ return self.map_unit.height
+end
+
+function isoline_leaf:draw()
+ local unit=self.map_unit
+ local x=
+  (unit.col-unit.row)*8+56
+ local y=
+  (unit.col+unit.row)*4
+  -unit.height+24
+
+ if unit.sprite_index>=0 then
+  if (
+   unit.checker and
+   (unit.col+unit.row)%2==0
+  ) then
+   c=pallete_mapping[1]
+   pal(5,c[1])
+   pal(6,c[2])
+   pal(7,c[3])
+  end
+  palt(0,false)
+  palt(15,true)
+  spr(
+   unit.sprite_index,
+   x,y+unit.sprite_ydelta,
+   2,unit.sprite_height)
+  pal()
+ end
+
+ x+=4
+ y-=2
+
+ if unit.pickup!=nil then
+  unit.pickup:draw(x,y)
+ end
+
+ for mover in all(unit.movers) do
+  mover:draw(x,y)
+ end
+end
+
+function make_isoline_tree(
+ unit_array,
+ idx_lo,
+ idx_hi,
+ height_from_right
+)
+-- print("lo="..idx_lo..",hi="..idx_hi)
+ if idx_lo==idx_hi then
+  return isoline_leaf:new(
+   unit_array[idx_lo]
+  )
+ else
+  local idx_mid=flr((idx_lo+idx_hi)/2)
+  return isoline_pair:new(
+   make_isoline_tree(
+    unit_array,
+    idx_lo,
+    idx_mid,
+    true
+   ),
+   make_isoline_tree(
+    unit_array,
+    idx_mid+1,
+    idx_hi,
+    false
+   ),
+   height_from_right
+  )
+ end
 end
 
 function new_mapview(_model)
@@ -261,58 +378,28 @@ function new_mapview(_model)
  local model=_model
  local isolines={}
  local nlines=model.ncol+model.nrow-1
- local tilecolors={
-  {0,5,6},{1,13,12},
-  {10,9,4},{2,14,15}
- }
 
  for i=1,nlines do
-  isolines[i]=isoline:new()
+  isolines[i]={}
  end
  for c=1,model.ncol do
   for r=1,model.nrow do
-   isolines[c+r-1]:add(model.units[c][r])
+   add(
+    isolines[c+r-1],
+    model.units[c][r]
+   )
   end
+ end
+ for i=1,nlines do
+  isolines[i]=make_isoline_tree(
+   isolines[i],1,#isolines[i]
+  )
  end
 
  function me.draw()
   cls()
   for i=1,nlines do
-   local units=isolines[i].units
-   for unit in all(units) do
-    local x=
-     (unit.col-unit.row)*8+56
-    local y=
-     (unit.col+unit.row)*4
-      -unit.height+24
-
-    if unit.sprite_index>=0 then
-     if unit.checker and (i%2)==0 then
-      c=tilecolors[1]
-      pal(5,c[1])
-      pal(6,c[2])
-      pal(7,c[3])
-     end
-     palt(0,false)
-     palt(15,true)
-     spr(
-      unit.sprite_index,
-      x,y+unit.sprite_ydelta,
-      2,unit.sprite_height)
-     pal()
-    end
-
-    x+=4
-    y-=2
-
-    if unit.pickup!=nil then
-     unit.pickup:draw(x,y)
-    end
-
-    for mover in all(unit.movers) do
-     mover:draw(x,y)
-    end
-   end
+   isolines[i]:draw()
   end
  end
 
