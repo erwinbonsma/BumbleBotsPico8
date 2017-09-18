@@ -35,7 +35,7 @@ enemies={
  {{8,3}}, --level 1
  {{5,2},{5,3}}  --level 1
 }
-player_start={
+player_startpos={
  {4,6}, --level 1
  {5,9}  --level 2
 }
@@ -257,6 +257,10 @@ function map_model:new(
  )
 
  return o
+end
+
+function map_model:unit_at(pos)
+ return self.units[pos[1]][pos[2]]
 end
 
 function map_model:update()
@@ -835,24 +839,24 @@ function level:init_map(map_model)
  self.map_view=new_mapview(map_model)
 end
 
-function level:add_player(col,row)
+function level:add_player(pos)
  self.player=player:new()
  local unit=
-  self.map_model.units[col][row]
+  self.map_model:unit_at(pos)
  unit:add_mover(self.player)
  self.player.unit=unit
 end
 
-function level:add_enemy(col,row,enemy)
+function level:add_enemy(pos,enemy)
  local unit=
-  self.map_model.units[col][row]
+  self.map_model:unit_at(pos)
  unit:add_mover(enemy)
  enemy.unit=unit
  add(self.enemies,enemy)
 end
 
-function level:add_pickup(col,row,pickup)
- self.map_model.units[col][row]:add_pickup(
+function level:add_pickup(pos,pickup)
+ self.map_model:unit_at(pos):add_pickup(
   pickup
  )
  add(self.pickups,pickup)
@@ -905,9 +909,7 @@ function leveldef:new(idx,o)
 
  for pickup_pos in all(pickups[idx]) do
   o:add_pickup(
-   pickup_pos[1],
-   pickup_pos[2],
-   pickup:new()
+   pickup_pos,pickup:new()
   )
  end
 
@@ -916,16 +918,13 @@ end
 
 function leveldef:reset()
  level.reset(self)
- local player_pos=player_start[self.idx]
  self:add_player(
-  player_pos[1],
-  player_pos[2]
+  player_startpos[self.idx]
  )
 
  for enemy_pos in all(enemies[self.idx]) do
   self:add_enemy(
-   enemy_pos[1],
-   enemy_pos[2],
+   enemy_pos,
    enemy:new(self.player)
   )
  end
