@@ -250,6 +250,8 @@ function map_model:new(
  o.nrow=nrow+2
  o.units={}
  o.functions={}
+ o.wave_strength=0
+ o.wave_strength_delta=1
 
  for c=1,o.ncol do
   o.units[c]={}
@@ -284,13 +286,21 @@ function map_model:unit_at(pos)
 end
 
 function map_model:update()
+ self.wave_strength=
+  max(0.5,min(1,
+   self.wave_strength+
+   self.wave_strength_delta/100
+  ))
+
  for c=1,self.ncol do
   for r=1,self.nrow do
    local w=0
    for fun in all(self.functions) do
     w+=fun:eval(c,r)
    end
-   self.units[c][r]:setwave(w)
+   self.units[c][r]:setwave(
+    w*self.wave_strength
+   )
   end
  end
 end
@@ -891,6 +901,7 @@ function level:reset()
   self.player:destroy()
   self.player=nil
  end
+ self.map_model.wave_strength_delta=1
 end
 
 function level:update(only_map)
@@ -1009,7 +1020,9 @@ function new_game()
  function me.handle_death()
   lives-=1
   if lives>0 then
-   anim=die_animation()
+   anim=die_animation(
+    level.map_model
+   )
   else
    anim=game_over_animation()
   end
@@ -1040,7 +1053,7 @@ function new_game()
  return me
 end --new_game()
 
-function die_animation()
+function die_animation(map_model)
  local me={}
 
  local clk=0
@@ -1063,6 +1076,8 @@ function die_animation()
  function me.draw()
   message_box("careful now")
  end
+
+ map_model.wave_strength_delta=-1
 
  return me
 end --die_animation
