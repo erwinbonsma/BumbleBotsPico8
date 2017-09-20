@@ -4,7 +4,7 @@ __lua__
 -- bumble bots
 -- (c) 2017, erwin bonsma
 
-version="0.1"
+version="0.2"
 
 col_delta={1,0,-1}
 row_delta={0,1,0}
@@ -83,6 +83,8 @@ tiletypes[10]={12,3,0,false,8,0}
 --gap
 tiletypes[31]={-1,0,0,false,-255,0}
 
+clock=0
+
 -- class inheritance
 function extend(clz,baseclz)
  for k,v in pairs(baseclz) do
@@ -105,7 +107,7 @@ function message_box(msg)
  print(msg,x+1,y,10)
 end
 
-function show_main_screen()
+function mainscreen_draw()
  cls()
  spr(192,0,32,16,4)
  print(
@@ -117,6 +119,19 @@ function show_main_screen()
  print(
   "a game by eriban",32,78,4
  )
+end
+
+function mainscreen_update()
+ if btnp(4) then
+  game=new_game()
+  _update=game.update
+  _draw=game.draw
+ end
+end
+
+function show_mainscreen()
+ _update=mainscreen_update
+ _draw=mainscreen_draw
 end
 
 map_unit={}
@@ -943,7 +958,7 @@ function new_game()
  function me.draw()
   level:draw()
   for i=1,lives do
-   spr(164,i*10-8,-4,1,2)
+   spr(164,i*10-8,-6,1,2)
   end
   local x=120
   for pickup in all(pickups) do
@@ -959,6 +974,8 @@ function new_game()
  end
 
  function me.update()
+  clock+=1
+  
   if (
    anim!=nil and
    anim.update()
@@ -1058,7 +1075,7 @@ function game_over_animation()
   end
 
   if clk==100 then
-   game=nil
+   show_mainscreen()
   end
  end
 
@@ -1094,26 +1111,8 @@ function level_done_animation()
  return me
 end --level_done_animation
 
-function _draw()
- if game then
-  game.draw()
- else
-  show_main_screen()
- end
-end
+show_mainscreen()
 
-function _update()
- if game then
-  clock+=1
-  game.update()
- else
-  if btnp(4) then
-   game=new_game()
-  end
- end
-end
-
-clock=0
 __gfx__
 ffffffff7fffffffffffffff7ffffffffffffffffffffffffffffff84ffffffffffffff77fffffffffffffff7fffffffffffffff7fffffffffffffff7fffffff
 ffffff77777fffffffffff77777ffffffffff777777fffffffffff8844ffffffffffff75675fffffffffff77777fffffffffff77777fffffffffff77777fffff
