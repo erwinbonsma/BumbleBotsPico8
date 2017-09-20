@@ -107,18 +107,23 @@ function message_box(msg)
  print(msg,x+1,y,10)
 end
 
+function print_await_key(action)
+ print(
+  "press  to "..action,
+  40-#action*2,120,10
+ )
+end
+
 function mainscreen_draw()
  cls()
  spr(192,0,32,16,4)
- print(
-  "press  to start",30,120,10
- )
  print(
   "v"..version,84,60,4
  )
  print(
   "a game by eriban",32,78,4
  )
+ print_await_key("start")
 end
 
 function mainscreen_update()
@@ -1070,7 +1075,7 @@ function game_over_animation()
  function me.update()
   clk+=1
 
-  if clk==100 then
+  if btnp(4) then
    show_mainscreen()
   end
 
@@ -1079,6 +1084,9 @@ function game_over_animation()
 
  function me.draw()
   message_box("game over")
+  if clk>100 then
+   print_await_key("retry")
+  end
  end
 
  sfx(2)
@@ -1138,9 +1146,7 @@ function game_done_animation()
    "end of the line..."
   )
   if clk>100 then
-   print(
-    "press  to retry",30,120,10
-   )
+   print_await_key("retry")
   end
  end
 
