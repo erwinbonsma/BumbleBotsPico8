@@ -216,7 +216,6 @@ function map_unit:neighbour(heading)
 end
 
 dirwave={}
-
 function dirwave:new(angle,o)
  o=o or {}
  o=setmetatable(o,self)
@@ -236,6 +235,33 @@ function dirwave:eval(x,y)
  return sin(
   d/self.w-clock/self.p
  )*self.a
+end
+
+shock_wave={}
+function shock_wave:new(x0,y0,o)
+ o=o or {}
+ o=setmetatable(o,self)
+ self.__index=self
+
+ o.x0=x0
+ o.y0=y0
+ o.f=o.f or 1/30 -- frequency
+ o.a=o.a or 1 -- amplitude
+ o.w=o.w or 4 -- wavelength
+ o.clk0=clock
+
+ return o
+end
+
+function shock_wave:eval(x,y)
+ local dx=x-self.x0
+ local dy=y-self.y0
+ local dist=sqrt(dx*dx+dy*dy)
+ local t=
+  (clock-self.clk0)*self.f-
+  dist/self.w
+ return
+  sin(max(0,min(1,t)))*self.a
 end
 
 map_model={}
@@ -1002,7 +1028,7 @@ function new_game()
 
   if (anim==nil) then
    if #pickups==#level.pickups then
-    me:level_done()
+    level_done()
    elseif death_signalled then
     me:handle_death()
    end
@@ -1032,8 +1058,8 @@ function new_game()
   add(pickups,pickup)
  end
 
- function me.level_done()
-  anim=level_done_animation()
+ function level_done()
+  anim=level_done_animation(level)
  end
 
  function me.next_level()
@@ -1109,7 +1135,7 @@ function game_over_animation()
  return me
 end --game_over_animation
 
-function level_done_animation()
+function level_done_animation(level)
  local me={}
 
  local clk=0
@@ -1121,7 +1147,7 @@ function level_done_animation()
    sfx(6)
   end
 
-  if clk==100 then
+  if clk==150 then
    if game.next_level() then
     return nil
    else
@@ -1137,6 +1163,12 @@ function level_done_animation()
    message_box("level done!")
   end
  end
+
+ local pu=level.player.unit
+ add(
+  level.map_model.functions,
+  shock_wave:new(pu.col,pu.row)
+ )
 
  return me
 end --level_done_animation
@@ -1172,6 +1204,7 @@ end --game_done_animation
 
 show_mainscreen()
 
+--eof
 __gfx__
 ffffffff7fffffffffffffff7ffffffffffffffffffffffffffffff84ffffffffffffff77fffffffffffffff7fffffffffffffff7fffffffffffffff7fffffff
 ffffff77777fffffffffff77777ffffffffff777777fffffffffff8844ffffffffffff75675fffffffffff77777fffffffffff77777fffffffffff77777fffff
