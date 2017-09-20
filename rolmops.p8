@@ -975,12 +975,9 @@ function new_game()
 
  function me.update()
   clock+=1
-  
-  if (
-   anim!=nil and
-   anim.update()
-  ) then
-   anim=nil
+
+  if (anim!=nil) then
+   anim=anim.update()
   end
 
   death_signalled=false
@@ -1023,11 +1020,14 @@ function new_game()
 
  function me.next_level()
   level_num+=1
-  level=leveldef:new(
-   level_num
-  )
-  pickups={}
-  level:reset()
+  if level_num<=#map_defs then
+   pickups={}
+   level=leveldef:new(
+    level_num
+   )
+   level:reset()
+   return true
+  end
  end
 
  me.next_level()
@@ -1049,10 +1049,10 @@ function die_animation()
 
   if clk==100 then
    game.reset()
-   return true
+   return nil
   end
 
-  return false
+  return me
  end
 
  function me.draw()
@@ -1070,18 +1070,18 @@ function game_over_animation()
  function me.update()
   clk+=1
 
-  if clk==1 then
-   sfx(2)
-  end
-
   if clk==100 then
    show_mainscreen()
   end
+
+  return me
  end
 
  function me.draw()
   message_box("game over")
  end
+
+ sfx(2)
 
  return me
 end --game_over_animation
@@ -1095,21 +1095,59 @@ function level_done_animation()
   clk+=1
 
   if clk==20 then
-   sfx(4)
+   sfx(6)
   end
 
   if clk==100 then
-   game.next_level()
-   return true
+   if game.next_level() then
+    return nil
+   else
+    return game_done_animation()
+   end
   end
+
+  return me
  end
 
  function me.draw()
-  message_box("level completed!")
+  if clk>=20 then
+   message_box("level done!")
+  end
  end
 
  return me
 end --level_done_animation
+
+function game_done_animation()
+ local me={}
+
+ local clk=0
+
+ function me.update()
+  clk+=1
+
+  if btnp(4) then
+   show_mainscreen()
+  end
+
+  return me
+ end
+
+ function me.draw()
+  message_box(
+   "end of the line..."
+  )
+  if clk>100 then
+   print(
+    "press Ž to retry",30,120,10
+   )
+  end
+ end
+
+ sfx(4)
+
+ return me
+end --game_done_animation
 
 show_mainscreen()
 
@@ -1415,7 +1453,7 @@ __sfx__
 010800001005013050150501503515000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010a00001175011750110001175011000117500000015754157501575015755130041100400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010200000b31300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010900000e5500e5501a3041055010550000001355713557135471353713525135150000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
