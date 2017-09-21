@@ -549,6 +549,7 @@ function mover:new(o)
 
  o.drop_speed=1
  o.dazed=0
+ o.height=40
 
  return o
 end
@@ -567,6 +568,17 @@ end
 
 function mover:is_dazed()
  return self.dazed>0
+end
+
+function mover:freeze()
+ self.frozen=true
+end
+
+function mover:can_move()
+ return (
+  self.dazed==0 and
+  not self.frozen
+ )
 end
 
 function mover:heading()
@@ -592,7 +604,7 @@ function mover:draw(x,y)
   palt(5,true)
   palt(6,true)
  end
- local height=self.unit.height
+
  if self:moving() then
   local h=self:heading()
   dx=flr(
@@ -603,78 +615,94 @@ function mover:draw(x,y)
    (col_delta[h]+row_delta[h])
    *self.mov/self.mov_del/2+0.5
   )*self.mov_dir
-
-  -- adapt height if needed
-  if self.unit2!=nil then
-   --on two tiles, follow highest
-   height=max(height,self.unit2.height)
-  end
  end
- if (
-  self.prev_height!=nil and
-  self.prev_height>height
- ) then
+
+ dy-=self.height-self.draw_unit.height
+
+ spr(160+r%10,x+dx,y+dy-7,1,2)
+ pal()
+end --mover:draw()
+
+function mover:update_height()
+ local height=self.unit.height
+
+ -- adapt height if needed
+ if self.unit2!=nil then
+  --on two tiles, follow highest
+  height=max(height,self.unit2.height)
+ end
+ if self.height>height then
   --gradual fall
   height=max(
-   height,self.prev_height-self.drop_speed
+   height,self.height-self.drop_speed
   )
   self.drop_speed+=0.1
  else
   self.drop_speed=1
  end
- self.prev_height=height
- dy -= height-self.draw_unit.height
+ self.height=height
+end
 
- spr(160+r%10,x+dx,y+dy-7,1,2)
- pal()
-end --mover:draw()
+function mover:turn_step()
+ self.rot+=self.rot_dir+self.rot_max
+ self.rot%=self.rot_max
+ if self.rot%(5*self.rot_del)==0 then
+  -- finished turn
+  self.rot_dir=0
+ end
+end
+
+function mover:move_step()
+ self.mov+=self.mov_inc
+
+ local relmov=(
+  self.mov+self.mov_max
+ )%self.mov_max
+
+ if relmov==2*self.mov_del-1 then
+  -- about to enter next unit
+  local to_unit=self.unit:neighbour(
+   (
+    self:heading()+
+    self.mov_dir+3
+   )%4
+  )
+  if self:can_enter(to_unit) then
+   -- entered destination unit
+   self:entering_unit(to_unit)
+  else
+   -- cannot move, retreat
+   self.mov_inc=-1
+   self.mov+=self.mov_inc
+   self:bump()
+  end
+ elseif relmov==4*self.mov_del then
+  -- halfway crossing
+  self:enter_unit()
+ elseif relmov==7*self.mov_del then
+  -- exited source unit
+  self:exited_unit()
+ elseif self.mov==0 then
+  -- done
+  self.mov_dir=0
+  self.mov_inc=1
+ end
+end
 
 function mover:update()
  if self.dazed>0 then
   self.dazed-=1
  end
 
- if self:turning() then
-  self.rot+=self.rot_dir+self.rot_max
-  self.rot%=self.rot_max
-  if self.rot%(5*self.rot_del)==0 then
-   -- finished turn
-   self.rot_dir=0
-  end
- elseif self:moving() then
-  self.mov+=self.mov_inc
-  local relmov=(
-   self.mov+self.mov_max
-  )%self.mov_max
-  if relmov==2*self.mov_del-1 then
-   -- about to enter next unit
-   local to_unit=self.unit:neighbour(
-    (
-     self:heading()+
-     self.mov_dir+3
-    )%4
-   )
-   if self:can_enter(to_unit) then
-    -- entered destination unit
-    self:entering_unit(to_unit)
-   else
-    -- cannot move, retreat
-    self.mov_inc=-1
-    self.mov+=self.mov_inc
-    self:bump()
-   end
-  elseif relmov==4*self.mov_del then
-   -- halfway crossing
-   self:enter_unit()
-  elseif relmov==7*self.mov_del then
-   -- exited source unit
-   self:exited_unit()
-  elseif self.mov==0 then
-   -- done
-   self.mov_dir=0
-   self.mov_inc=1
+ if self:can_move() then
+  if self:turning() then
+   self:turn_step()
+  elseif self:moving() then
+   self:move_step()
   end
  end
+
+ self:update_height()
 end --mover:update()
 
 function mover:bump()
@@ -735,9 +763,9 @@ function player:update()
  end
 
  if (
+  self:can_move() and
   not self:moving() and
-  not self:turning() and
-  not self:is_dazed()
+  not self:turning()
  ) then
   if self.nxt_rot_dir!=nil then
    self.rot_dir=self.nxt_rot_dir
@@ -757,11 +785,16 @@ function player:update()
  ) then
   sfx(5)
  end
+
  if (
-  self.unit.height<-50 and
-  self.unit2==nil
- )
- then
+  self.unit.pickup!=nil and
+  self.height==self.unit.height
+ ) then
+  self.unit.pickup:pickup(self)
+  self.unit.pickup=nil
+ end
+
+ if self.height<-50 then
   game.signal_death()
  end
 end --update()
@@ -769,14 +802,6 @@ end --update()
 function player:bump()
  mover.bump(self)
  sfx(0)
-end
-
-function player:enter_unit()
- mover.enter_unit(self)
- if self.unit.pickup!=nil then
-  self.unit.pickup:pickup(self)
-  self.unit.pickup=nil
- end
 end
 
 enemy={}
@@ -806,7 +831,7 @@ function enemy:update()
   game:signal_death()
  end
 
- if not self:is_dazed() then
+ if self:can_move() then
   if (
    not self:moving() and
    not self:turning()
@@ -918,7 +943,7 @@ function level:new(o)
  self.__index=self
 
  o.pickups={}
- o.enemies={}
+ o.movers={}
 
  return o
 end
@@ -928,20 +953,21 @@ function level:init_map(map_model)
  self.map_view=new_mapview(map_model)
 end
 
-function level:add_player(pos)
- self.player=player:new()
+function level:add_mover(pos,mover)
  local unit=
   self.map_model:unit_at(pos)
- unit:add_mover(self.player)
- self.player.unit=unit
+ unit:add_mover(mover)
+ mover.unit=unit
+ add(self.movers,mover)
+end
+
+function level:add_player(pos)
+ self.player=player:new()
+ self:add_mover(pos,self.player)
 end
 
 function level:add_enemy(pos,enemy)
- local unit=
-  self.map_model:unit_at(pos)
- unit:add_mover(enemy)
- enemy.unit=unit
- add(self.enemies,enemy)
+ self:add_mover(pos,enemy)
 end
 
 function level:add_pickup(pos,pickup)
@@ -952,25 +978,25 @@ function level:add_pickup(pos,pickup)
 end
 
 function level:reset()
- for e in all(self.enemies) do
-  e:destroy()
+ for mover in all(self.movers) do
+  mover:destroy()
  end
- self.enemies={}
- if self.player!=nil then
-  self.player:destroy()
-  self.player=nil
- end
+ self.movers={}
+ self.player=nil
  self.map_model.wave_strength_delta=1
 end
 
-function level:update(only_map)
+function level:freeze()
+ for mover in all(self.movers) do
+  mover:freeze()
+ end
+end
+
+function level:update()
  self.map_model:update()
 
- if not only_map then
-  self.player:update()
-  for e in all(self.enemies) do
-   e:update()
-  end
+ for mover in all(self.movers) do
+  mover:update()
  end
 end
 
@@ -1057,7 +1083,7 @@ function new_game()
 
   death_signalled=false
 
-  level:update(anim!=nil)
+  level:update()
 
   if (anim==nil) then
    if #pickups==#level.pickups then
@@ -1079,11 +1105,9 @@ function new_game()
  function me.handle_death()
   lives-=1
   if lives>0 then
-   anim=die_animation(
-    level.map_model
-   )
+   anim=die_animation(level)
   else
-   anim=game_over_animation()
+   anim=game_over_animation(level)
   end
  end
 
@@ -1112,7 +1136,7 @@ function new_game()
  return me
 end --new_game()
 
-function die_animation(map_model)
+function die_animation(level)
  local me={}
 
  local clk=0
@@ -1136,12 +1160,13 @@ function die_animation(map_model)
   message_box("careful now")
  end
 
- map_model.wave_strength_delta=-1
+ level.map_model.wave_strength_delta=-1
+ level:freeze()
 
  return me
 end --die_animation
 
-function game_over_animation()
+function game_over_animation(level)
  local me={}
 
  local clk=0
@@ -1163,6 +1188,7 @@ function game_over_animation()
   end
  end
 
+ level:freeze()
  sfx(2)
 
  return me
@@ -1202,6 +1228,7 @@ function level_done_animation(level)
   level.map_model.functions,
   shock_wave:new(pu.col,pu.row)
  )
+ level:freeze()
 
  return me
 end --level_done_animation
