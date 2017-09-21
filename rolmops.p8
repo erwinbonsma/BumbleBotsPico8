@@ -24,11 +24,11 @@ map_defs={
 
 pickups={
  {--level 1
-  {2,2}--,{9,2},{2,9},{9,9}
+  {2,2},{9,2},{2,9},{9,9}
  },
  {--level 2
-  {2,2}--,{9,2},{2,9},
- -- {4,4},{8,4},{4,8},{8,8}
+  {2,2},{9,2},{2,9},
+  {4,4},{8,4},{4,8},{8,8}
  }
 }
 enemies={
@@ -149,6 +149,7 @@ end
 function show_mainscreen()
  _update=mainscreen_update
  _draw=mainscreen_draw
+ menuitem(1)
 end
 
 map_unit={}
@@ -1131,6 +1132,9 @@ function new_game()
   end
  end
 
+ menuitem(
+  1,"restart",show_mainscreen
+ )
  me.next_level()
 
  return me
