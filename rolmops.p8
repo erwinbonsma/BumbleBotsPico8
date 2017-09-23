@@ -26,7 +26,7 @@ map_defs={
 
 pickups={
  {--level 1
-  {2,2},{9,2},{2,9},{9,9}
+  {2,2}--,{9,2},{2,9},{9,9}
  },
  {--level 2
   {2,2},{6,2},{2,6}
@@ -119,11 +119,27 @@ function smooth_clamp(h)
  return f*12
 end
 
-function message_box(msg)
- local x=63-#msg*2
- local y=61
- rectfill(x,y-1,x+#msg*4,y+5,0)
- print(msg,x+1,y,10)
+function message_box(msgs)
+ local maxlen=0
+ foreach(
+  msgs,
+  function(msg)
+   maxlen=max(#msg,maxlen)
+  end
+ )
+
+ local y=63-#msgs*3
+ rectfill(
+  63-maxlen*2,y,
+  63+maxlen*2,y+#msgs*6,0
+ )
+
+ for msg in all(msgs) do
+  print(
+   msg,64-#msg*2,y+1,10
+  )
+  y+=6
+ end
 end
 
 function print_await_key(action)
@@ -1042,8 +1058,7 @@ function leveldef:new(idx,o)
  return o
 end
 
-function leveldef:reset()
- level.reset(self)
+function leveldef:start()
  self:add_player(
   player_startpos[self.idx]
  )
@@ -1060,7 +1075,7 @@ function new_game()
  local me={}
 
  local anim=nil
- local level_num=1
+ local level_num=0
  local lives=3
  local pickups={}
  local level=nil
@@ -1104,10 +1119,6 @@ function new_game()
   end
  end
 
- function me.reset()
-  level:reset()
- end
-
  function me.signal_death()
   death_signalled=true
  end
@@ -1136,15 +1147,16 @@ function new_game()
    level=leveldef:new(
     level_num
    )
-   level:reset()
-   return true
+   return level
   end
  end
 
  menuitem(
   1,"restart",show_mainscreen
  )
- me.next_level()
+ anim=level_start_animation(
+  me.next_level()
+ )
 
  return me
 end --new_game()
@@ -1162,15 +1174,15 @@ function die_animation(level)
   end
 
   if clk==100 then
-   game.reset()
-   return nil
+   level:reset()
+   return level_start_animation(level)
   end
 
   return me
  end
 
  function me.draw()
-  message_box("careful now")
+  message_box({"careful now"})
  end
 
  level.map_model.wave_strength_delta=-1
@@ -1195,7 +1207,7 @@ function game_over_animation(level)
  end
 
  function me.draw()
-  message_box("game over")
+  message_box({"game over"})
   if clk>100 then
    print_await_key("retry")
   end
@@ -1206,6 +1218,32 @@ function game_over_animation(level)
 
  return me
 end --game_over_animation
+
+function level_start_animation(level)
+ local me={}
+
+ local clk=0
+
+ function me.update()
+  clk+=1
+
+  if clk==100 then
+   level:start()
+   return nil
+  end
+
+  return me
+ end
+
+ function me.draw()
+  message_box({
+   "ready to bumble?",
+  })
+ end
+
+ return me
+end --level_start_animation
+
 
 function level_done_animation(level)
  local me={}
@@ -1220,8 +1258,9 @@ function level_done_animation(level)
   end
 
   if clk==150 then
-   if game.next_level() then
-    return nil
+   level=game.next_level()
+   if level!=nil then
+    return level_start_animation(level)
    else
     return game_done_animation()
    end
@@ -1232,7 +1271,10 @@ function level_done_animation(level)
 
  function me.draw()
   if clk>=20 then
-   message_box("level done!")
+   message_box({
+    "level done",
+    "bumble on!"
+   })
   end
  end
 
@@ -1262,9 +1304,10 @@ function game_done_animation()
  end
 
  function me.draw()
-  message_box(
-   "end of the line..."
-  )
+  message_box({
+   "end of the line",
+   "that's sublime!"
+  })
   if clk>100 then
    print_await_key("retry")
   end
