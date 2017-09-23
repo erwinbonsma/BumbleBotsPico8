@@ -303,15 +303,15 @@ function map_model:new(
  for c=1,o.ncol do
   o.units[c]={}
   for r=1,o.nrow do
-   local is_border=(
-    c%(o.ncol-1)==1 or
-    r%(o.nrow-1)==1
-   )
    local unit={}
    unit.col=c
    unit.row=r
    if c==o.ncol then
-    unit.tiletype=34*8
+    if r==o.nrow then
+     unit.tiletype=35*8
+    else
+     unit.tiletype=34*8
+    end
    elseif r==o.nrow then
     unit.tiletype=33*8
    elseif c==1 or r==1 then
