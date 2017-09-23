@@ -26,7 +26,7 @@ map_defs={
 
 pickups={
  {--level 1
-  {2,2}--,{9,2},{2,9},{9,9}
+  {2,2},{9,2},{2,9},{9,9}
  },
  {--level 2
   {2,2},{6,2},{2,6}
@@ -1237,7 +1237,8 @@ function level_start_animation(level)
 
  function me.draw()
   message_box({
-   "ready to bumble?",
+   "ready to",
+   "bumble?!",
   })
  end
 
