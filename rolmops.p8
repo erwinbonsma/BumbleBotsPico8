@@ -774,7 +774,10 @@ function mover:bump()
 end
 
 function mover:can_enter(unit)
- return unit.height-self.unit.height<=self.tol
+ return (
+  unit!=nil and
+  unit.height-self.unit.height<=self.tol
+ )
 end
 
 function mover:entering_unit(to_unit)
