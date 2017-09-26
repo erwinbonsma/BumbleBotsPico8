@@ -277,6 +277,7 @@ function map_unit:new(_mapmodel,o)
 end
 
 function map_unit:setwave(wave)
+ self.prev_height=self.height
  self.height=
   self.height0+
   self.flex*wave
@@ -667,10 +668,30 @@ function mover:freeze()
  self.frozen=true
 end
 
+--true iff mover can move or 
+--turn during update
 function mover:can_move()
  return (
   self.dazed==0 and
   not self.frozen
+ )
+end
+
+--true iff mover can initiate
+--a new move or turn during 
+--update
+function mover:can_start_move()
+ return (
+  self:can_move() and
+  not self:moving() and
+  not self:turning() and (
+   --mover must touch ground.
+   --check previous height, as
+   --unit height has already
+   --been updated, but mover
+   --height not yet
+   self.height==self.unit.prev_height
+  )
  )
 end
 
@@ -830,7 +851,7 @@ function mover:entering_unit(to_unit)
 end
 
 function mover:enter_unit()
- --msg="emter:"..self.unit:tostring().."-"..self.unit2:tostring()
+ --msg="enter:"..self.unit:tostring().."-"..self.unit2:tostring()
  local unit=self.unit2
  self.unit2=self.unit
  self.unit=unit
@@ -865,11 +886,7 @@ function player:update()
   self.nxt_rot_dir=1
  end
 
- if (
-  self:can_move() and
-  not self:moving() and
-  not self:turning()
- ) then
+ if self:can_start_move() then
   if self.nxt_rot_dir!=nil then
    self.rot_dir=self.nxt_rot_dir
    self.nxt_rot_dir=nil
@@ -926,26 +943,20 @@ function enemy:update()
   game:signal_death()
  end
 
- if self:can_move() then
-  if (
-   not self:moving() and
-   not self:turning()
-  )
-  then
-   --to turn or not to turn?
-   local best_rotdir=0
-   local best_score=nil
-   for rotdir=-1,1 do
-    local h=(self:heading()+rotdir+4)%4
-    local s=self:heading_score(h)
-    if best_score==nil or s>best_score then
-     best_rotdir=rotdir
-     best_score=s
-    end
+ if self:can_start_move() then
+  --to turn or not to turn?
+  local best_rotdir=0
+  local best_score=nil
+  for rotdir=-1,1 do
+   local h=(self:heading()+rotdir+4)%4
+   local s=self:heading_score(h)
+   if best_score==nil or s>best_score then
+    best_rotdir=rotdir
+    best_score=s
    end
-
-   self.rot_dir=best_rotdir
   end
+
+  self.rot_dir=best_rotdir
 
   if not self:turning() then
    self.mov_dir=1
@@ -1074,7 +1085,9 @@ function teleport:visit(mover)
    )
   dst_unit:add_mover(mover)
   mover.unit=dst_unit
+  mover.height=dst_unit.height+16
   mover.teleport_block=true
+  sfx(7)
  end
 end
 
@@ -1275,7 +1288,7 @@ function new_game()
  local me={}
 
  local anim=nil
- local level_num=3
+ local level_num=0
  local lives=3
  local pickups={}
  local level=nil
@@ -1826,7 +1839,7 @@ __sfx__
 010a00001175011750110001175011000117500000015754157501575015755130041100400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010200000b31300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010900000e5500e5501a3041055010550000001355713557135471353713525135150000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01080000347232b700307003472300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
