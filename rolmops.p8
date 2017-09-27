@@ -25,16 +25,16 @@ teleport_colmaps={
 }
 --x0,y0,w,h,wave_amplitude
 map_defs={
- --level 1: simple wave
- {0,0,8,8,1},
- --level 2: pillar maze
- {0,8,8,8,1.5},
- --level 3: bridge & channel
- {8,0,8,8,1},
- --level 4: teleport mania
- {8,8,8,8,1},
+ --level 1
+ {0,0,8,8,1,"ride the waves"},
+ --level 2
+ {0,8,8,8,1.5,"pillar maze"},
+ --level 3
+ {8,0,8,8,1,"gutter and stage"},
+ --level 4
+ {8,8,8,8,1,"telerium"},
  --level 5: 16x16
- {16,0,16,16,1}
+ --{16,0,16,16,1}
 }
 
 objects={
@@ -65,7 +65,7 @@ enemies={
  {{8,3}}, --level 1
  {{9,2},{2,9}}, --level 2
  {{5,2},{5,3}}, --level 3
- {{3,3}},--,{7,4},{4,7}}, --level 4
+ {{3,3}}, --level 4
  {}
 }
 player_startpos={
@@ -906,7 +906,7 @@ function player:update()
  if self.height<-50 then
   game.signal_death()
  end
-end --update()
+end --player:update
 
 function player:bump()
  mover.bump(self)
@@ -1027,7 +1027,7 @@ function pickup:new(o)
  o=o or {}
  local o=setmetatable(o,self)
  self.__index=self
- 
+
  o.is_pickup=true
 
  return o
@@ -1256,6 +1256,8 @@ function leveldef:new(idx,o)
  )
  o:init_map(map_model)
 
+ o.name=map_def[6]
+
  for object_specs in all(objects[idx]) do
   new_object(o,object_specs)
  end
@@ -1289,7 +1291,7 @@ function new_game()
  local me={}
 
  local anim=nil
- local level_num=3
+ local level_num=0
  local lives=3
  local pickups={}
  local level=nil
@@ -1438,11 +1440,22 @@ function level_start_animation(level)
  local me={}
 
  local clk=0
+ local msg={
+  "level "..level.idx,
+  level.name
+ }
 
  function me.update()
   clk+=1
 
-  if clk==60 then
+  if clk==50 then
+   msg={
+    "ready to",
+    "bumble?!"
+   }
+  end
+
+  if clk==100 then
    level:start()
    return nil
   end
@@ -1451,10 +1464,7 @@ function level_start_animation(level)
  end
 
  function me.draw()
-  message_box({
-   "ready to",
-   "bumble?!",
-  })
+  message_box(msg)
  end
 
  return me
