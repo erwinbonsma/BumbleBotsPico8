@@ -26,13 +26,13 @@ teleport_colmaps={
 --x0,y0,w,h,wave_amplitude
 map_defs={
  --level 1
- {0,0,8,8,1,"ride the waves"},
+ {0,0,8,8,1,120,"ride the waves"},
  --level 2
- {0,8,8,8,1.5,"pillar maze"},
+ {0,8,8,8,1.5,120,"pillar maze"},
  --level 3
- {8,0,8,8,1,"gutter and stage"},
+ {8,0,8,8,1,180,"gutter and stage"},
  --level 4
- {8,8,8,8,1,"telerium"},
+ {8,8,8,8,1,120,"telerium"},
  --level 5: 16x16
  --{16,0,16,16,1}
 }
@@ -137,7 +137,10 @@ tiletypes[34]={64,3,-248,true,false,-256,0}
 --gap, back
 tiletypes[35]={0,0,-248,false,false,-256,0}
 
+--global game state
 clock=0
+game=nil
+lvl=nil
 
 -- class inheritance
 function extend(clz,baseclz)
@@ -152,6 +155,15 @@ function distance(unit1,unit2)
   abs(unit1.col-unit2.col)+
   abs(unit1.row-unit2.row)
  )
+end
+
+function timestr(time_in_sec)
+ if time_in_sec<0 then
+  return "-:--"
+ end
+ local mn=flr(time_in_sec/60)
+ local sc="0"..flr(time_in_sec-60*mn)
+ return ""..mn..":"..sub(sc,#sc-1)
 end
 
 -- multiple pal() map changes
@@ -904,7 +916,9 @@ function player:update()
  end
 
  if self.height<-50 then
-  game.signal_death()
+  game.signal_death(
+   "watch your step"
+  )
  end
 end --player:update
 
@@ -937,7 +951,9 @@ end
 
 function enemy:update()
  if self.unit==self.target.unit then
-  game:signal_death()
+  game.signal_death(
+   "caught!"
+  )
  end
 
  if self:can_start_move() then
@@ -1039,7 +1055,7 @@ end
 
 function pickup:visit(mover)
  self.unit:remove_object(self)
- game.signal_pickup(self)
+ lvl:pickup_collected(self)
  sfx(3)
 end
 
@@ -1093,24 +1109,24 @@ end
 
 --creates new object and adds it
 --to level
-function new_object(level,specs)
+function new_object(specs)
  local object_type=specs[3]
  if object_type==nil then
   local pickup=pickup:new()
-  level:add_object(specs,pickup)
-  add(level.pickups,pickup)
+  lvl:add_object(specs,pickup)
+  lvl.num_pickups+=1
  elseif object_type<=4 then
   --teleport
   local pos2={specs[4],specs[5]}
   local tp=teleport:new(
    object_type,pos2
   )
-  level:add_object(specs,tp)
+  lvl:add_object(specs,tp)
   --also add its twin
   tp=teleport:new(
    object_type,specs
   )
-  level:add_object(pos2,tp)
+  lvl:add_object(pos2,tp)
  end
 end
 
@@ -1121,8 +1137,9 @@ function level:new(o)
  local o=setmetatable(o,self)
  self.__index=self
 
- o.pickups={}
+ o.collected_pickups={}
  o.movers={}
+ o.num_pickups=0
 
  return o
 end
@@ -1172,12 +1189,39 @@ function level:reset()
 end
 
 function level:freeze()
+ self.playing=nil
  for mover in all(self.movers) do
   mover:freeze()
  end
 end
 
+function level:pickup_collected(
+ pickup
+)
+ add(
+  self.collected_pickups,
+  pickup
+ )
+
+ if (
+  #self.collected_pickups==
+  self.num_pickups
+ ) then
+  game.level_done()
+ end
+end
+
 function level:update()
+ if self.playing then
+  self.time_left-=1
+
+  if self.time_left<0 then
+   game.signal_death(
+    "timed out"
+   )
+  end
+ end
+
  self.map_model:update()
 
  for mover in all(self.movers) do
@@ -1223,12 +1267,25 @@ function level:draw()
    0.8*self.camera_y+
    0.2*self.camera_ty
  end
+
  camera(
   flr(self.camera_x+0.5),
   flr(self.camera_y+0.5)
  )
  self.map_view.draw()
  camera()
+
+ print(
+  timestr(self.time_left/30),
+  56,2,
+  8+min(3,flr(self.time_left/300))
+ )
+
+ local x=120
+ for pickup in all(self.pickups) do
+  pickup:draw(x,0)
+  x-=9
+ end
 end
 
 leveldef={}
@@ -1256,10 +1313,12 @@ function leveldef:new(idx,o)
  )
  o:init_map(map_model)
 
- o.name=map_def[6]
+ o.time_left=map_def[6]*30
+ o.name=map_def[7]
 
+ lvl=o
  for object_specs in all(objects[idx]) do
-  new_object(o,object_specs)
+  new_object(object_specs)
  end
 
  return o
@@ -1285,6 +1344,8 @@ function leveldef:start()
    enemy:new(self.player)
   )
  end
+ 
+ self.playing=true
 end
 
 function new_game()
@@ -1293,19 +1354,12 @@ function new_game()
  local anim=nil
  local level_num=0
  local lives=3
- local pickups={}
- local level=nil
- local death_signalled
+ local death_cause
 
  function me.draw()
-  level:draw()
+  lvl:draw()
   for i=1,lives do
    spr(132,i*10-8,-6,1,2)
-  end
-  local x=120
-  for pickup in all(pickups) do
-   pickup:draw(x,0)
-   x-=9
   end
   if anim!=nil then
    anim.draw()
@@ -1322,49 +1376,53 @@ function new_game()
    anim=anim.update()
   end
 
-  death_signalled=false
+  death_cause=nil
 
-  level:update()
+  lvl:update()
 
   if (anim==nil) then
-   if #pickups==#level.pickups then
-    level_done()
-   elseif death_signalled then
-    me:handle_death()
+   if death_cause then
+    me.handle_death()
    end
   end
  end
+ 
+ function me.reset()
+  if lvl.time_left<=0 then
+   --hard reset on time-out:
+   --reset all pick-ups
+   lvl=leveldef:new(
+    level_num
+   )
+  end
+  lvl:reset()
+ end
 
- function me.signal_death()
-  death_signalled=true
+ function me.signal_death(cause)
+  death_cause=cause
  end
 
  function me.handle_death()
   lives-=1
   if lives>0 then
-   anim=die_animation(level)
+   anim=die_animation(
+    death_cause
+   )
   else
-   anim=game_over_animation(level)
+   anim=game_over_animation()
   end
  end
 
- function me.signal_pickup(pickup)
-  add(pickups,pickup)
- end
-
- function level_done()
-  anim=level_done_animation(level)
+ function me.level_done()
+  anim=level_done_animation()
  end
 
  function me.next_level()
   level_num+=1
   if level_num<=#map_defs then
-   pickups={}
-   level=leveldef:new(
-    level_num
-   )
-   level:reset()
-   return level
+   lvl=leveldef:new(level_num)
+   lvl:reset()
+   return lvl
   end
  end
 
@@ -1378,8 +1436,9 @@ function new_game()
  return me
 end --new_game()
 
-function die_animation(level)
+function die_animation(cause)
  local me={}
+ local msg={cause}
 
  local clk=0
 
@@ -1391,24 +1450,24 @@ function die_animation(level)
   end
 
   if clk==100 then
-   level:reset()
-   return level_start_animation(level)
+   game.reset()
+   return level_start_animation()
   end
 
   return me
  end
 
  function me.draw()
-  message_box({"careful now"})
+  message_box(msg)
  end
 
- level.map_model.wave_strength_delta=-1
- level:freeze()
+ lvl.map_model.wave_strength_delta=-1
+ lvl:freeze()
 
  return me
 end --die_animation
 
-function game_over_animation(level)
+function game_over_animation()
  local me={}
 
  local clk=0
@@ -1430,19 +1489,19 @@ function game_over_animation(level)
   end
  end
 
- level:freeze()
+ lvl:freeze()
  sfx(2)
 
  return me
 end --game_over_animation
 
-function level_start_animation(level)
+function level_start_animation()
  local me={}
 
  local clk=0
  local msg={
-  "level "..level.idx,
-  level.name
+  "level "..lvl.idx,
+  lvl.name
  }
 
  function me.update()
@@ -1456,7 +1515,7 @@ function level_start_animation(level)
   end
 
   if clk==100 then
-   level:start()
+   lvl:start()
    return nil
   end
 
@@ -1471,7 +1530,7 @@ function level_start_animation(level)
 end --level_start_animation
 
 
-function level_done_animation(level)
+function level_done_animation()
  local me={}
 
  local clk=0
@@ -1484,9 +1543,9 @@ function level_done_animation(level)
   end
 
   if clk==150 then
-   level=game.next_level()
-   if level!=nil then
-    return level_start_animation(level)
+   lvl=game.next_level()
+   if lvl!=nil then
+    return level_start_animation()
    else
     return game_done_animation()
    end
@@ -1504,12 +1563,12 @@ function level_done_animation(level)
   end
  end
 
- local pu=level.player.unit
+ local pu=lvl.player.unit
  add(
-  level.map_model.functions,
+  lvl.map_model.functions,
   shock_wave:new(pu.col,pu.row)
  )
- level:freeze()
+ lvl:freeze()
 
  return me
 end --level_done_animation
