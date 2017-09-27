@@ -69,7 +69,7 @@ enemies={
  {}
 }
 player_startpos={
- {4,6}, --level 1
+ {4,7}, --level 1
  {9,9}, --level 2
  {5,9}, --level 3
  {7,7}, --level 4
@@ -1277,12 +1277,14 @@ function level:draw()
 
  print(
   timestr(self.time_left/30),
-  56,2,
+  40,2,
   8+min(3,flr(self.time_left/300))
  )
 
  local x=120
- for pickup in all(self.pickups) do
+ for pickup in all(
+  self.collected_pickups
+ ) do
   pickup:draw(x,0)
   x-=9
  end
@@ -1344,7 +1346,7 @@ function leveldef:start()
    enemy:new(self.player)
   )
  end
- 
+
  self.playing=true
 end
 
@@ -1386,7 +1388,7 @@ function new_game()
    end
   end
  end
- 
+
  function me.reset()
   if lvl.time_left<=0 then
    --hard reset on time-out:
@@ -1422,16 +1424,15 @@ function new_game()
   if level_num<=#map_defs then
    lvl=leveldef:new(level_num)
    lvl:reset()
-   return lvl
+   return true
   end
  end
 
  menuitem(
   1,"restart",show_mainscreen
  )
- anim=level_start_animation(
-  me.next_level()
- )
+ me.next_level()
+ anim=level_start_animation()
 
  return me
 end --new_game()
@@ -1543,8 +1544,7 @@ function level_done_animation()
   end
 
   if clk==150 then
-   lvl=game.next_level()
-   if lvl!=nil then
+   if game.next_level() then
     return level_start_animation()
    else
     return game_done_animation()
