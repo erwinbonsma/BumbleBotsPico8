@@ -51,14 +51,11 @@ objects={
  {--level 4
   {5,2},{2,5},{7,5},{5,7},
   {9,5},{5,9},
-  {2,2,{1,{6,5}}},
-  {6,5,{1,{2,2}}},
-  {9,2,{2,{6,6}}},
-  {6,6,{2,{9,2}}},
-  {2,9,{3,{5,5}}},
-  {5,5,{3,{2,9}}},
-  {9,9,{4,{5,6}}},
-  {5,6,{4,{9,9}}}
+  --teleports(c1,r1,col,c2,r2)
+  {2,2,1,6,5},
+  {9,2,2,6,6},
+  {2,9,3,5,5},
+  {9,9,4,5,6}
  },
  {--level 5
   {10,10}
@@ -1006,7 +1003,7 @@ function enemy:is_blocked(unit)
  return (
   (
    unit.object!=nil and
-   unit.object.is_pickup()
+   unit.object.is_pickup
   ) or
   self.unit.height-unit.height>10
  )
@@ -1030,16 +1027,14 @@ function pickup:new(o)
  o=o or {}
  local o=setmetatable(o,self)
  self.__index=self
+ 
+ o.is_pickup=true
 
  return o
 end
 
 function pickup:draw(x,y)
  spr(138,x,y,1,1)
-end
-
-function pickup:is_pickup()
- return true
 end
 
 function pickup:visit(mover)
@@ -1079,10 +1074,6 @@ function teleport:draw(x,y)
  pal()
 end
 
-function teleport:is_pickup()
- return false
-end
-
 function teleport:visit(mover)
  if mover:moving() then
   mover.teleport_block=nil
@@ -1100,15 +1091,26 @@ function teleport:visit(mover)
  end
 end
 
-function new_object(specs)
- if specs==nil then
-  return pickup:new()
- end
- local object_type=specs[1]
- if object_type<=4 then
-  return teleport:new(
-   object_type,specs[2]
+--creates new object and adds it
+--to level
+function new_object(level,specs)
+ local object_type=specs[3]
+ if object_type==nil then
+  local pickup=pickup:new()
+  level:add_object(specs,pickup)
+  add(level.pickups,pickup)
+ elseif object_type<=4 then
+  --teleport
+  local pos2={specs[4],specs[5]}
+  local tp=teleport:new(
+   object_type,pos2
   )
+  level:add_object(specs,tp)
+  --also add its twin
+  tp=teleport:new(
+   object_type,specs
+  )
+  level:add_object(pos2,tp)
  end
 end
 
@@ -1158,9 +1160,6 @@ function level:add_object(pos,object)
  self.map_model:unit_at(pos):add_object(
   object
  )
- if object:is_pickup() then
-  add(self.pickups,pickup)
- end
 end
 
 function level:reset()
@@ -1207,7 +1206,6 @@ function level:set_target_camera_pos(
   )
  self.camera_tx=(c-r)*8
  self.camera_ty=(c+r)*4-32
- msg="tx="..self.camera_tx..", ty="..self.camera_ty
 end
 
 function level:draw()
@@ -1242,7 +1240,6 @@ function leveldef:new(idx,o)
  self.__index=self
 
  o.idx=idx
- o.num_enemies=o.num_enemies or 1
 
  local map_def=map_defs[idx]
  local map_model=map_model:new(
@@ -1260,12 +1257,7 @@ function leveldef:new(idx,o)
  o:init_map(map_model)
 
  for object_specs in all(objects[idx]) do
-  o:add_object(
-   object_specs,
-   new_object(
-    object_specs[3]
-   )
-  )
+  new_object(o,object_specs)
  end
 
  return o
@@ -1450,7 +1442,7 @@ function level_start_animation(level)
  function me.update()
   clk+=1
 
-  if clk==100 then
+  if clk==60 then
    level:start()
    return nil
   end
