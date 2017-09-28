@@ -1408,13 +1408,11 @@ function new_game()
 
  function me.handle_death()
   lives-=1
-  if lives>0 then
-   anim=die_animation(
-    death_cause
-   )
-  else
-   anim=game_over_animation()
-  end
+  anim=die_animation(death_cause)
+ end
+
+ function me.game_over()
+  return lives==0
  end
 
  function me.level_done()
@@ -1453,8 +1451,12 @@ function die_animation(cause)
   end
 
   if clk==100 then
-   game.reset()
-   return level_start_animation()
+   if game.game_over() then
+    return game_done_animation()
+   else
+    game.reset()
+    return level_start_animation()
+   end
   end
 
   return me
@@ -1469,34 +1471,6 @@ function die_animation(cause)
 
  return me
 end --die_animation
-
-function game_over_animation()
- local me={}
-
- local clk=0
-
- function me.update()
-  clk+=1
-
-  if btnp(4) then
-   show_mainscreen()
-  end
-
-  return me
- end
-
- function me.draw()
-  message_box({"game over"})
-  if clk>100 then
-   print_await_key("retry")
-  end
- end
-
- lvl:freeze()
- sfx(2)
-
- return me
-end --game_over_animation
 
 function level_start_animation()
  local me={}
@@ -1589,6 +1563,7 @@ function game_done_animation()
  local me={}
 
  local clk=0
+ local msg
 
  function me.update()
   clk+=1
@@ -1597,14 +1572,7 @@ function game_done_animation()
    show_mainscreen()
   end
 
-  return me
- end
-
- function me.draw()
-  local msg
-  if clk<60 then
-   msg={"end of the line!"}
-  else
+  if clk==60 then
    msg={
     "score: "..score,
     "",
@@ -1612,6 +1580,10 @@ function game_done_animation()
    }
   end
 
+  return me
+ end
+
+ function me.draw()
   message_box(msg)
 
   if clk>100 then
@@ -1619,7 +1591,14 @@ function game_done_animation()
   end
  end
 
- sfx(4)
+ lvl:freeze()
+ if game.game_over() then
+  msg={"game over"}
+  sfx(2)
+ else
+  msg={"end of the line!"}
+  sfx(4)
+ end
 
  return me
 end --game_done_animation
