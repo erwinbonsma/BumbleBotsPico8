@@ -1361,7 +1361,12 @@ function new_game()
    spr(132,i*10-8,-6,1,2)
   end
 
-  local s=""..score
+  local s
+  if score>=max(1,hiscore) then
+   s="hs: "..score
+  else
+   s="s: "..score
+  end
   print(s,128-4*#s,2,6)
 
   if anim!=nil then
@@ -1532,7 +1537,6 @@ function level_done_animation()
    if game.next_level() then
     return level_start_animation()
    else
-    hiscore=max(hiscore,score)
     return game_done_animation()
    end
   end
@@ -1591,6 +1595,7 @@ function game_done_animation()
   end
  end
 
+ hiscore=max(hiscore,score)
  lvl:freeze()
  if game.game_over() then
   msg={"game over"}
