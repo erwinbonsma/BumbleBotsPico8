@@ -1202,6 +1202,7 @@ function level:pickup_collected(
   self.collected_pickups,
   pickup
  )
+ game.inc_score(10)
 
  if (
   #self.collected_pickups==
@@ -1277,17 +1278,9 @@ function level:draw()
 
  print(
   timestr(self.time_left/30),
-  40,2,
+  56,2,
   8+min(3,flr(self.time_left/300))
  )
-
- local x=120
- for pickup in all(
-  self.collected_pickups
- ) do
-  pickup:draw(x,0)
-  x-=9
- end
 end
 
 leveldef={}
@@ -1357,15 +1350,21 @@ function new_game()
  local level_num=0
  local lives=3
  local death_cause
+ local score=0
 
  function me.draw()
   lvl:draw()
   for i=1,lives do
    spr(132,i*10-8,-6,1,2)
   end
+
+  local s=""..score
+  print(s,128-4*#s,2,6)
+
   if anim!=nil then
    anim.draw()
   end
+
   if msg!=nil then
    print(msg,0,120,11)
   end
@@ -1398,6 +1397,10 @@ function new_game()
    )
   end
   lvl:reset()
+ end
+
+ function me.inc_score(amount)
+  score+=amount
  end
 
  function me.signal_death(cause)
