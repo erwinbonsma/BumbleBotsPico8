@@ -316,7 +316,7 @@ end
 -- purposes. it may not yet
 -- have entered the unit
 function map_unit:add_mover(mover)
- if (mover.draw_unit!=nil) then
+ if mover.draw_unit then
   mover.draw_unit:remove_mover(mover)
  end
  add(self.movers,mover)
@@ -581,7 +581,7 @@ function isoline_leaf:draw()
  x+=4
  y-=2
 
- if unit.object!=nil then
+ if unit.object then
   unit.object:draw(x,y)
  end
 
@@ -769,7 +769,7 @@ function mover:update_height()
  local height=self.unit.height
 
  -- adapt height if needed
- if self.unit2!=nil then
+ if self.unit2 then
   --on two tiles, follow highest
   height=max(height,self.unit2.height)
  end
@@ -860,7 +860,7 @@ function mover:update()
  self:update_dx_dy()
 
  if (
-  self.unit.object!=nil and
+  self.unit.object and
   self.height==self.unit.height
  ) then
   self.unit.object:visit(self)
@@ -869,7 +869,7 @@ end --mover:update()
 
 function mover:can_enter(unit)
  return (
-  unit!=nil and
+  unit and
   unit.height-self.unit.height<=self.tol
  )
 end
@@ -998,7 +998,7 @@ end
 function player:entering_unit(to_unit)
  mover.entering_unit(self,to_unit)
  local box=to_unit:box()
- if box!=nil then
+ if box then
   box:set_heading(
    self:move_heading()
   )
@@ -1014,7 +1014,7 @@ function player:update()
  end
 
  if self:can_start_move() then
-  if self.nxt_rot_dir!=nil then
+  if self.nxt_rot_dir then
    self.rot_dir=self.nxt_rot_dir
    self.nxt_rot_dir=nil
   elseif btn(2) then
@@ -1152,11 +1152,11 @@ end --enemy:heading_score
 function enemy:is_blocked(unit)
  return (
   (
-   unit.object!=nil and
+   unit.object and
    unit.object.is_pickup
   ) or
   self.unit.height-unit.height>10 or
-  unit:box()!=nil
+  unit:box()
  )
 end
 
@@ -1481,9 +1481,7 @@ function level:set_target_camera_pos(
 end
 
 function level:draw()
- if (
-  self.player!=nil
- ) then
+ if self.player then
   self:set_target_camera_pos(
    self.player.unit.col,
    self.player.unit.row    
@@ -1619,7 +1617,7 @@ function new_game()
  local me={}
 
  local anim=nil
- local level_num=4
+ local level_num=0
  local lives=3
  local death_cause
 
@@ -1639,11 +1637,11 @@ function new_game()
   end
   print(s,128-4*#s,2,6)
 
-  if anim!=nil then
+  if anim then
    anim.draw()
   end
 
-  if msg!=nil then
+  if msg then
    print(msg,0,120,11)
   end
  end
@@ -1651,7 +1649,7 @@ function new_game()
  function me.update()
   clock+=1
 
-  if (anim!=nil) then
+  if anim then
    anim=anim.update()
   end
 
