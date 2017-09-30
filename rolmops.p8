@@ -83,6 +83,7 @@ movers={
  },
  {--level 5
   {3,3}, --player
+  {9,9},
   --boxes
   {4,4,1},
   {5,4,1},
@@ -572,8 +573,24 @@ function isoline_leaf:draw()
   unit.object:draw(x,y)
  end
 
- for mover in all(unit.movers) do
-  mover:draw(x,y)
+ if #unit.movers>0 then
+  local movers=unit.movers
+  local min_idx=1
+  --find mover that is furthest
+  --back. draw this one first.
+  for i=2,#movers do
+   if (
+    movers[i].dy<
+    movers[min_idx].dy
+   ) then
+    min_idx=i
+   end
+  end
+  for i=1,#movers do
+   movers[
+    1+(i+min_idx-2)%#movers
+   ]:draw(x,y)
+  end
  end
 end
 
@@ -765,7 +782,7 @@ function mover:update_dx_dy()
   self.dy=0
  end
 
- self.dy-=self.height-self.draw_unit.height
+ self.dh=self.height-self.draw_unit.height
 end
 
 function mover:turn_step()
@@ -903,13 +920,6 @@ function bot:update()
  mover.update(self)
 end
 
-function bot:can_enter(unit)
- return (
-  mover.can_enter(self,unit) and
-  unit.box==nil
- )
-end
-
 function bot:draw(x,y)
  local r=flr(self.rot/self.rot_del)
  if r>9 then
@@ -931,7 +941,7 @@ function bot:draw(x,y)
  spr(
   128+r%10,
   x+self.dx+1,
-  y+self.dy-7,1,2
+  y+self.dy-self.dh-7,1,2
  )
 
  pal()
@@ -1102,21 +1112,36 @@ function enemy:heading_score(h)
  return score
 end --enemy:heading_score
 
+--true iff enemy is not expected
+--to be able to move to unit
+--soon
 function enemy:is_blocked(unit)
  return (
   (
    unit.object!=nil and
    unit.object.is_pickup
   ) or
-  self.unit.height-unit.height>10
+  self.unit.height-unit.height>10 or
+  unit.box!=nil
  )
 end
 
 function enemy:can_enter(unit)
- return (
-  mover.can_enter(self,unit) and
-  not self:is_blocked(unit)
- )
+ if (
+  self:is_blocked(unit) or
+  not mover.can_enter(self,unit)
+ ) then
+  return false
+ end
+ --do not move in case there's
+ --another mover that is not the
+ --target
+ for mover in all(unit.movers) do
+  if mover!=self.target then
+   return false
+  end
+ end
+ return true
 end
 
 function enemy:bump()
@@ -1144,7 +1169,7 @@ function box:can_enter(unit)
   --of move. once moving, assume
   --its okay.
   self:moving() or (
-   unit.box==nil and
+   #unit.movers==0 and
    mover.can_enter(self,unit)
   )
  )
@@ -1169,7 +1194,7 @@ function box:draw(x,y)
  spr(
   156,
   x+self.dx,
-  y+self.dy+self.drop_y-1,
+  y+self.dy-self.dh+self.drop_y-1,
   2,2
  )
  pal()
