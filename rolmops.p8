@@ -63,7 +63,7 @@ objects={
   --gaps
   {2,3,5},
   {3,3,6},
-  {6,6,6}  
+  {6,6,6}
  }
 }
 
@@ -1264,9 +1264,12 @@ function teleport:new(
 
  o.dst_pos=dst_pos
  o.colmap_idx=colmap_idx
- o.cooldown_cnt=0
 
  return o
+end
+
+function teleport:reset()
+ self.cooldown_cnt=0
 end
 
 function teleport:draw(x,y)
@@ -1307,10 +1310,15 @@ function gap:new(colmap_idx,o)
  o=o or {}
  local o=setmetatable(o,self)
  self.__index=self
- 
+
  o.colmap_idx=colmap_idx
 
  return o
+end
+
+function gap:reset()
+ self.filling=nil
+ self.filled=nil
 end
 
 function gap:visit(mover)
@@ -1355,6 +1363,7 @@ function level:new(o)
  self.__index=self
 
  o.collected_pickups={}
+ o.objects={}
  o.movers={}
  o.num_pickups=0
 
@@ -1385,14 +1394,24 @@ function level:add_object(pos,object)
  self.map_model:unit_at(pos):add_object(
   object
  )
+ add(self.objects,object)
 end
 
 function level:reset()
+ --destroy movers
  for mover in all(self.movers) do
   mover:destroy()
  end
  self.movers={}
  self.player=nil
+
+ --reset objects
+ for object in all(self.objects) do
+  if object.reset then
+   object:reset()
+  end
+ end
+
  self.map_model.wave_strength_delta=1
 end
 
