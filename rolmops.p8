@@ -1328,6 +1328,10 @@ function gap:draw(x,y)
  pal()
 end
 
+--draw function called after
+--drawing of movers. it re-draws
+--front of tile which was drawn
+--over by dropping mover
 function gap:draw2(x,y)
  if self.filling then
   spr(170,x,y+4,2,1)
