@@ -324,6 +324,15 @@ function map_unit:remove_mover(mover)
  del(self.movers,mover)
 end
 
+--returns box at unit, if any
+function map_unit:box()
+ for k,mover in pairs(self.movers) do
+  if mover.is_box then
+   return mover
+  end
+ end
+end
+
 function map_unit:add_object(object)
  object.unit=self
  self.object=object
@@ -961,23 +970,24 @@ function player:new(o)
 end
 
 function player:can_enter(unit)
+ local box=unit:box()
  return (
-  mover.can_enter(self,unit) and (
-   unit.box==nil or (
-    unit.box:can_enter(
-     unit:neighbour(
-      self:move_heading()
-     )
+  (
+   box==nil or
+   box:can_enter(
+    unit:neighbour(
+     self:move_heading()
     )
    )
-  )
+  ) and
+  mover.can_enter(self,unit)
  )
 end
 
 function player:entering_unit(to_unit)
  mover.entering_unit(self,to_unit)
- if to_unit.box!=nil then
-  local box=to_unit.box
+ local box=to_unit:box()
+ if box!=nil then
   box:set_heading(
    self:move_heading()
   )
@@ -1122,7 +1132,7 @@ function enemy:is_blocked(unit)
    unit.object.is_pickup
   ) or
   self.unit.height-unit.height>10 or
-  unit.box!=nil
+  unit:box()!=nil
  )
 end
 
@@ -1158,6 +1168,7 @@ function box:new(o)
  local o=setmetatable(o,self)
  self.__index=self
 
+ o.is_box=true
  o.drop_y=0
 
  return o
@@ -1173,12 +1184,6 @@ function box:can_enter(unit)
    mover.can_enter(self,unit)
   )
  )
-end
-
-function box:enter_unit()
- mover.enter_unit(self)
- self.unit.box=self
- self.unit2.box=nil
 end
 
 function box:draw(x,y)
@@ -1508,7 +1513,6 @@ function leveldef:add_mover_from_specs(
   elseif mover_type==1 then
    local box=box:new()
    self:add_mover(specs,box)
-   box.unit.box=box
   end
  end
 end
