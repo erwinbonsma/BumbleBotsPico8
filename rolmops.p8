@@ -168,11 +168,14 @@ tiletypes[36]={0,3,0,false,6,0,0}
 tiletypes[37]={0,3,0,false,7,0,0}
 
 --global game state
+cartdata("eriban_bumblebots")
+
 clock=0
 game=nil
 lvl=nil
 score=0
-hiscore=0
+hiscore=dget(0)
+maxlevel=max(1,dget(1))
 
 -- class inheritance
 function extend(clz,baseclz)
@@ -1767,7 +1770,7 @@ function levelmenu:init_map()
    if l then
     local chk=
      (flr(c/2)+flr(r/2))%2
-    if l<=#map_defs then
+    if l<=maxlevel then
      unit:settype(288+chk*8)
     else
      unit:settype(290+chk*8)
@@ -2092,6 +2095,11 @@ function game_done_animation()
  end
 
  hiscore=max(hiscore,score)
+ dset(0,hiscore)
+
+ maxlevel=max(maxlevel,lvl.idx)
+ dset(1,maxlevel)
+
  lvl:freeze()
  if game.game_over() then
   msg={"game over"}
