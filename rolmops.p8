@@ -31,7 +31,7 @@ map_defs={
  --level 4
  {8,8,8,8,1,120,"telerium"},
  --level 5
- {16,0,8,8,1,120,"mind the gaps"}
+ {16,0,8,8,1,120,"mind the gap"}
 }
 
 objects={
@@ -109,13 +109,13 @@ tiletypes={}
 --boundary at edge of map. moving
 --tiles are actual size, which
 --results in less clean map boundary.
-tiletypes[0]={14,2,0,true,1,0,3}
+tiletypes[0]={14,2,0,true,-1,0,3}
 
 --basic, fixed
-tiletypes[1]={0,3,0,false,1,0,0}
+tiletypes[1]={0,3,0,false,-1,0,0}
 
 --basic, low flexibility
-tiletypes[2]={14,2,0,false,1,0,1}
+tiletypes[2]={14,2,0,false,-1,0,1}
 
 --elevator, up+down
 tiletypes[3]={2,3,0,true,0,0,10}
@@ -270,9 +270,7 @@ end
 
 function mainscreen_update()
  if btnp(4) then
-  game=new_game()
-  _update=game.update
-  _draw=game.draw
+  show_levelmenu()
  end
 end
 
@@ -280,6 +278,18 @@ function show_mainscreen()
  _update=mainscreen_update
  _draw=mainscreen_draw
  menuitem(1)
+end
+
+function show_levelmenu()
+ local levelmenu=new_levelmenu()
+ _update=levelmenu.update
+ _draw=levelmenu.draw
+end
+
+function start_game(start_level)
+ game=new_game(start_level)
+ _update=game.update
+ _draw=game.draw
 end
 
 map_unit={}
@@ -290,23 +300,27 @@ function map_unit:new(_mapmodel,o)
  self.__index=self
 
  o.mapmodel=_mapmodel
- o.tiletype=o.tiletype or 0
-
- local props=
-  tiletypes[flr(o.tiletype/8)]
- o.sprite_index=props[1]
- o.sprite_height=props[2]
- o.sprite_ydelta=props[3]
- o.sprite_repeat=props[4]
- o.colmap_idx=props[5]
- o.height0=
-  props[6]+2*(o.tiletype%8)
- o.flex=props[7]
+ o:settype(o.tiletype or 0)
 
  o.height=0
  o.movers={}
 
  return o
+end
+
+function map_unit:settype(tiletype)
+ self.tiletype=tiletype
+
+ local props=
+  tiletypes[flr(tiletype/8)]
+ self.sprite_index=props[1]
+ self.sprite_height=props[2]
+ self.sprite_ydelta=props[3]
+ self.sprite_repeat=props[4]
+ self.colmap_idx=props[5]
+ self.height0=
+  props[6]+2*(tiletype%8)
+ self.flex=props[7]
 end
 
 function map_unit:setwave(wave)
@@ -987,7 +1001,7 @@ function player:can_enter(unit)
  local box=unit:box()
  return (
   (
-   box==nil or
+   not box or
    box:can_enter(
     unit:neighbour(
      self:move_heading()
@@ -1092,12 +1106,12 @@ function enemy:update()
 
  if self:can_start_move() then
   --to turn or not to turn?
-  local best_rotdir=0
   local best_score=nil
+  local best_rotdir
   for rotdir=-1,1 do
    local h=(self:heading()+rotdir+4)%4
    local s=self:heading_score(h)
-   if best_score==nil or s>best_score then
+   if not best_score or s>best_score then
     best_rotdir=rotdir
     best_score=s
    end
@@ -1118,7 +1132,7 @@ function enemy:heading_score(h)
  local to_unit=self.unit:neighbour(h)
  local target_unit=self.target.unit
 
- if to_unit==nil or to_unit.height<-5 then
+ if not to_unit or to_unit.height<-5 then
   return -99
  end
 
@@ -1268,6 +1282,8 @@ function teleport:new(
  o.dst_pos=dst_pos
  o.colmap_idx=colmap_idx
 
+ o:reset()
+
  return o
 end
 
@@ -1293,7 +1309,7 @@ end
 function teleport:visit(mover)
  if mover:moving() then
   mover.teleport_block=nil
- elseif mover.teleport_block==nil then
+ elseif not mover.teleport_block then
   local dst_unit=
    mover.unit.mapmodel:unit_at(
     self.dst_pos
@@ -1371,16 +1387,15 @@ function level:new(o)
  self.__index=self
 
  o.collected_pickups={}
- o.objects={}
- o.movers={}
  o.num_pickups=0
 
- return o
-end
+ --invoke abstract init_map()
+ o.map_model=o:init_map()
+ o.map_view=new_mapview(o.map_model)
 
-function level:init_map(map_model)
- self.map_model=map_model
- self.map_view=new_mapview(map_model)
+ o:reset()
+
+ return o
 end
 
 function level:init_camera(
@@ -1420,11 +1435,16 @@ function level:reset()
   end
  end
 
- self.map_model.wave_strength_delta=1
+ if self.map_model then
+  self.map_model.wave_strength_delta=1
+ end
+
+ self:set_target_camera_pos(
+  5,5,true
+ )
 end
 
 function level:freeze()
- self.playing=nil
  for mover in all(self.movers) do
   mover:freeze()
  end
@@ -1448,16 +1468,6 @@ function level:pickup_collected(
 end
 
 function level:update()
- if self.playing then
-  self.time_left-=1
-
-  if self.time_left<0 then
-   game.signal_death(
-    "timed out"
-   )
-  end
- end
-
  self.map_model:update()
 
  for mover in all(self.movers) do
@@ -1466,26 +1476,25 @@ function level:update()
 end
 
 function level:set_target_camera_pos(
- player_col,player_row
+ c,r,update_pos
 )
- local c=
-  max(
-   min(
-    player_col,
-    self.map_model.ncol-5
-   ),
-   5
+ c=max(
+  5,min(
+   c,self.map_model.ncol-5
   )
- local r=
-  max(
-   min(
-    player_row,
-    self.map_model.nrow-5
-   ),
-   5
+ )
+ r=max(
+  5,min(
+   r,self.map_model.nrow-5
   )
+ )
  self.camera_tx=(c-r)*8
  self.camera_ty=(c+r)*4-32
+
+ if update_pos then
+  self.camera_x=self.camera_tx
+  self.camera_y=self.camera_ty
+ end
 end
 
 function level:draw()
@@ -1508,25 +1517,30 @@ function level:draw()
  )
  self.map_view.draw()
  camera()
-
- print(
-  timestr(self.time_left/30),
-  56,2,
-  8+min(3,flr(self.time_left/300))
- )
 end
 
 leveldef={}
 extend(leveldef,level)
 
 function leveldef:new(idx,o)
- o=level.new(self,o)
+ o=o or {}
+ o.idx=idx
+
+ level.new(self,o)
  local o=setmetatable(o,self)
  self.__index=self
 
- o.idx=idx
+ for object_specs in all(objects[idx]) do
+  o:add_object_from_specs(
+   object_specs
+  )
+ end
 
- local map_def=map_defs[idx]
+ return o
+end
+
+function leveldef:init_map()
+ local map_def=map_defs[self.idx]
  local map_model=map_model:new(
   map_def[1],
   map_def[2],
@@ -1539,18 +1553,10 @@ function leveldef:new(idx,o)
    0.10,{a=map_def[5]}
   )
  )
- o:init_map(map_model)
+ self.time_left=map_def[6]*30
+ self.name=map_def[7]
 
- o.time_left=map_def[6]*30
- o.name=map_def[7]
-
- for object_specs in all(objects[idx]) do
-  o:add_object_from_specs(
-   object_specs
-  )
- end
-
- return o
+ return map_model
 end
 
 --create new object and add it
@@ -1558,7 +1564,7 @@ function leveldef:add_object_from_specs(
  specs
 )
  local object_type=specs[3]
- if object_type==nil then
+ if not object_type then
   local pickup=pickup:new()
   self:add_object(specs,pickup)
   self.num_pickups+=1
@@ -1585,12 +1591,12 @@ end
 function leveldef:add_mover_from_specs(
  specs
 )
- if self.player==nil then
+ if not self.player then
   self.player=player:new()
   self:add_mover(specs,self.player)
  else
   local mover_type=specs[3]
-  if mover_type==nil then
+  if not mover_type then
    local enemy=enemy:new(
     self.player
    )
@@ -1604,11 +1610,10 @@ end
 
 function leveldef:reset()
  level.reset(self)
+
  self:set_target_camera_pos(
   movers[self.idx][1]
  )
- self.camera_x=self.camera_tx
- self.camera_y=self.camera_ty 
 end
 
 function leveldef:start()
@@ -1621,11 +1626,142 @@ function leveldef:start()
  self.playing=true
 end
 
-function new_game()
+function leveldef:freeze()
+ level.freeze(self)
+
+ self.playing=false
+end
+
+function leveldef:update()
+ if self.playing then
+  self.time_left-=1
+
+  if self.time_left<0 then
+   game.signal_death(
+    "timed out"
+   )
+  end
+ end
+
+ level.update(self)
+end
+
+function leveldef:draw()
+ level.draw(self)
+
+ print(
+  timestr(self.time_left/30),
+  56,2,
+  8+min(3,flr(self.time_left/300))
+ )
+end
+
+levelmenu={}
+extend(levelmenu,level)
+
+function levelmenu:new(o)
+ o=level.new(self,o)
+ local o=setmetatable(o,self)
+ self.__index=self
+
+ return o
+end
+
+function levelmenu:level_at(pos)
+ local c=pos[1]-3
+ local r=pos[2]-3
+ if (
+  c>=0 and
+  c<=self.map_model.ncol-5 and
+  r>=0 and
+  r<=self.map_model.nrow-5
+ ) then
+  c=flr(c/2)
+  r=flr(r/2)
+  return 9-c-3*r
+ end
+end
+
+function levelmenu:init_map()
+ local map_model=map_model:new(
+  0,0,8,8
+ )
+ self.map_model=map_model
+
+ for c=2,map_model.ncol-1 do
+  for r=2,map_model.nrow-1 do
+   local pos={c,r}
+   local unit=map_model:unit_at(
+    pos
+   )
+   local l=self:level_at(pos)
+   if l then
+    if l<=#map_defs then
+     unit:settype(88)
+    else
+     unit:settype(92)
+    end
+   else
+    unit:settype(97)
+   end
+  end
+ end
+
+ return map_model
+end
+
+function levelmenu:start()
+ self.player=player:new()
+ self:add_mover(
+  {8,8},
+  self.player
+ )
+end
+
+function new_levelmenu()
+ local me={}
+
+ function level_idx()
+  local unit=lvl.player.unit
+  return lvl:level_at(
+   {unit.col,unit.row}
+  )
+ end
+
+ function me.draw()
+  lvl:draw()
+
+  local idx=level_idx()
+  local name=map_defs[idx][7]
+  print(
+   "level "..idx..": "..name,
+   0,0,7
+  )
+
+  print_await_key("start")
+ end
+
+ function me.update()
+  clock+=1
+  lvl:update()
+
+  if btnp(4) then
+   start_game(level_idx()-1)
+  end
+ end
+
+ lvl=levelmenu:new()
+ lvl:start()
+ lvl:update()
+
+ return me
+end
+
+function new_game(level_num)
  local me={}
 
  local anim=nil
- local level_num=4
+ local level_num=level_num or 0
  local lives=3
  local death_cause
 
@@ -1665,7 +1801,7 @@ function new_game()
 
   lvl:update()
 
-  if (anim==nil) then
+  if not anim then
    if death_cause then
     me.handle_death()
    end
@@ -1704,7 +1840,6 @@ function new_game()
   level_num+=1
   if level_num<=#map_defs then
    lvl=leveldef:new(level_num)
-   lvl:reset()
    return true
   end
  end
@@ -1976,30 +2111,30 @@ ddd881110dd8111101d1d1d0dddda110dddaa111dddaa1110dda11110d1d1d10dddda110dddaa111
 0000000000cccccccccccbccccccccc0000000000000000000707070707070707070700077000000000777000000000000000000000000000055445549944900
 00000000cccccccccccccfccccccccccc00000000000000000770070707000707700700070000000000000000000000000000000000000000094554494495500
 000000cccccccccccccccfccccccccccccc000000000000000770070707000707700700070000000000000000000000000000000000000000049945529554400
-0000cccccccccccccccccfccccccccccccccc0000000000000707077707000707070777077700000000000000000000077777777999999990094499255445500
-00cccccccccccccccccccfccccccccccccccccc00000000000707007707000707070777077700000000000000000000067777755499999440049944944554400
-00dccccccccccccccccccccccccccccccccccccc0000000000777000000000007770000000000000000000000000000066675555944944550094499455445500
-00dddccccccccccccccccccccccccccccccccc110000000000770000000000007700000000000000000000000000000066665555499455440009944944550000
-00dddddccccccccccccccccccccccccccccc11110000000000000000000000000000000000000000000000000000000066665555944944550000099455000000
-00dddddddccccccccccccccccccccccccc1111110000000000000000770007000000077000000000000000000000000066665555499455440000000900000000
-00dddddddddccccccccccccccccccccc111111110000000000000000777077700000777000000000000000000000000006665500044944000000000000000000
-00dddddddddddccccccccccccccccc11111111110000000000000000707070707770700000000000000000000000000000060000000400000000000000000000
-00dddddddddddddccccccccccccc11111111111100000000009900007070707077707000000000000077770077777777ffffffff7fffffffffffffffffffffff
-00dddddddddddddddccccccccc1111111111111100000000999999007700707007007770000000007777777777777777ffffff77777fffffffffffffffffffff
-0008dddddddddddddddccccc111111111111111100000000499999207700707007007770000000007777777777666677ffff777556777ffffffffff777ffffff
-000888dddddddddddddddc11111111111111111000000000444922207070707007000070000000006677775555666666ff7775555666777ffffff7777777ffff
-000888dddddddddddddddd111111111111111aa000000000044422007070707007000070000000006666665555666666f777555556666777ffff777777777fff
-000888dddddddddddddddd1111111111111aaaa000000000000400007770777007007770000000006666665577666677f667775556677755ffff667777755fff
-00cc88dddddddddddddddd11111111111aaaaaa0000000000000000077000700070077000000b0000066660077777777f666677757775555ffff666675555fff
-00ddccdddddddddddddddd111111111aaaaaaaac0000000000000000000000000700000000bbbbb00000000077777777f666666777555555ffff666665555fff
-00dddddddddddddddddddd1111111aaaaaaaacc100000000000000000000000000000000bbbbbbbb0000000000000000fff66666655555ffff7766666555577f
-00dddddddddddddddddddd11111aaaaaaaacc111000000000000000000000000000000003bbbbb330000000000000000fffff6666555fffff777666665555777
-07dddddddddddddddd1ddd111aaaaaaaacc1111100000000000000000000000000000000b33b33330000000000000000fffffff665fffffff667776665577755
-77dddddddddddddddd1aad1aaaaaaaacc1111111000000000000000000000000000000003bb333330000000000000000fffffffffffffffff666677767775555
-777ddddddddddddddd1aaaaaaaaaacc11111111100000000000000000000000000000000b33b33330000000000000000fffffffffffffffff666666777555555
-67777ddddddddddddd1aaaaaaaacc11111111111700000000000000000000000000000003bb333330000000000000000fffffffffffffffffff66666655555ff
-666777ddddddddddddcaaaaaacc111111111111777000000000000000000000000000000033b33000000000000000000fffffffffffffffffffff6666555ffff
-666665ddf000dddddddccaacc11111111111177775000000000000000000000000000000000300000000000000000000fffffffffffffffffffffff665ffffff
+0000cccccccccccccccccfccccccccccccccc0000000000000707077707000707070777077700000000000000000000000000000000000000094499255445500
+00cccccccccccccccccccfccccccccccccccccc00000000000707007707000707070777077700000000000000000000000000000000000000049944944554400
+00dccccccccccccccccccccccccccccccccccccc0000000000777000000000007770000000000000000000000000000000000000000000000094499455445500
+00dddccccccccccccccccccccccccccccccccc110000000000770000000000007700000000000000000000000000000000000000000000000009944944550000
+00dddddccccccccccccccccccccccccccccc11110000000000000000000000000000000000000000000000000000000000000000000000000000099455000000
+00dddddddccccccccccccccccccccccccc1111110000000000000000770007000000077000000000000000000000000000000000000000000000000900000000
+00dddddddddccccccccccccccccccccc111111110000000000000000777077700000777000000000000000000000000000000000000000000000000000000000
+00dddddddddddccccccccccccccccc11111111110000000000000000707070707770700000000000000000000000000000000000000000000000000000000000
+00dddddddddddddccccccccccccc1111111111110000000000990000707070707770700000000000000000000000000000000000000000000000000000000000
+00dddddddddddddddccccccccc111111111111110000000099999900770070700700777000000000000000000000000000000000000000000000000000000000
+0008dddddddddddddddccccc11111111111111110000000049999920770070700700777000000000000000000000000000000000000000000000000000000000
+000888dddddddddddddddc1111111111111111100000000044492220707070700700007000000000000000000000000000000000000000000000000000000000
+000888dddddddddddddddd111111111111111aa00000000004442200707070700700007000000000000000000000000000000000000000000000000000000000
+000888dddddddddddddddd1111111111111aaaa00000000000040000777077700700777000000000000000000000000000000000000000000000000000000000
+00cc88dddddddddddddddd11111111111aaaaaa00000000000000000770007000700770000000000000000000000000000000000000000000000000000000000
+00ddccdddddddddddddddd111111111aaaaaaaac0000000000000000000000000700000000000000000000000000000000000000000000000000000000000000
+00dddddddddddddddddddd1111111aaaaaaaacc10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00dddddddddddddddddddd11111aaaaaaaacc1110000000007007770777070707770700077707770777077700000000000000000000000000000000000000000
+07dddddddddddddddd1ddd111aaaaaaaacc111110000000077007070707070707000700000707070707070700000000000000000000000000000000000000000
+77dddddddddddddddd1aad1aaaaaaaacc11111110000000007000070007070707000700000707070707070700000000000000000000000000000000000000000
+777ddddddddddddddd1aaaaaaaaaacc1111111110000000007000770077077707770777007007770777070700000000000000000000000000000000000000000
+67777ddddddddddddd1aaaaaaaacc111111111117000000007007700007000700070707007007070007070700000000000000000000000000000000000000000
+666777ddddddddddddcaaaaaacc11111111111177700000007007000707000700770707007007070007070700000000000000000000000000000000000000000
+666665ddf000dddddddccaacc1111111111117777500000077707770777000707700777007007770007077700000000000000000000000000000000000000000
 666665dfff00dddddddddcc111111111111777755500000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 066665ffff000ddddddddd1111111111177775555500000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000665fffff00ddddddddd1111111117777555555500000000000000000000000000000000000000000000000000000000000000000000000000000000000000
