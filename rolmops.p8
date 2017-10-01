@@ -823,7 +823,9 @@ function mover:update_height()
  else
   self.drop_speed=1
  end
+
  self.height=height
+ self.dh=self.height-self.draw_unit.height
 end
 
 function mover:update_dx_dy()
@@ -841,8 +843,6 @@ function mover:update_dx_dy()
   self.dx=0
   self.dy=0
  end
-
- self.dh=self.height-self.draw_unit.height
 end
 
 function mover:turn_step()
@@ -1341,6 +1341,7 @@ function teleport:visit(mover)
   dst_unit:add_mover(mover)
   mover.unit=dst_unit
   mover.height=dst_unit.height+16
+  mover:update_height()
   mover.teleport_block=true
   self.cooldown_cnt=24
   sfx(7)
