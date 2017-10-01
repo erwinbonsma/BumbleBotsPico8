@@ -17,6 +17,8 @@ colmaps={
  {129,156}, --teleport blue
  {141,158}, --teleport pink
  {81,109,124}, --b&w to blue
+ {113}, --white to dark-blue
+ {115}, --white to dark-green
 }
 colmaps[0]={} --default
 
@@ -150,9 +152,6 @@ tiletypes[12]={0,3,0,false,5,0,0}
 --basic, fixed, dark
 tiletypes[13]={0,3,0,false,1,0,0}
 
---basic, fixed, blue/dropped
-tiletypes[14]={0,3,8,false,5,0,0}
-
 --gap, row-dir, front
 tiletypes[33]={65,3,-248,true,0,-256,0}
 
@@ -161,6 +160,12 @@ tiletypes[34]={64,3,-248,true,0,-256,0}
 
 --gap, back
 tiletypes[35]={0,0,-248,false,0,-256,0}
+
+--basic, fixed, blue (top-only)
+tiletypes[36]={0,3,0,false,6,0,0}
+
+--basic, fixed, green (top-only)
+tiletypes[37]={0,3,0,false,7,0,0}
 
 --global game state
 clock=0
@@ -1731,17 +1736,17 @@ function levelmenu:new(o)
 end
 
 function levelmenu:level_at(pos)
- local c=pos[1]-3
- local r=pos[2]-3
+ local c=pos[1]-2
+ local r=pos[2]-2
  if (
   c>=0 and
-  c<=self.map_model.ncol-5 and
+  c<=self.map_model.ncol-3 and
   r>=0 and
-  r<=self.map_model.nrow-5
+  r<=self.map_model.nrow-3
  ) then
   c=flr(c/2)
   r=flr(r/2)
-  return 9-c-3*r
+  return 16-c-4*r
  end
 end
 
@@ -1752,32 +1757,35 @@ function levelmenu:init_map()
  self.map_model=map_model
 
  local a0=sprite_address(230)
- for c=2,map_model.ncol-1 do
-  for r=2,map_model.nrow-1 do
+ for c=1,map_model.ncol do
+  for r=1,map_model.nrow do
    local pos={c,r}
    local unit=map_model:unit_at(
     pos
    )
    local l=self:level_at(pos)
    if l then
+    local chk=
+     (flr(c/2)+flr(r/2))%2
     if l<=#map_defs then
-     unit:settype(88+(l%2)*16)
+     unit:settype(288+chk*8)
     else
-     unit:settype(90+(l%2)*16)
+     unit:settype(290+chk*8)
     end
 
     local digit=flr(
-     l/(1+9*(c%2))
+     l/(10-9*(c%2))
     )%10
     self:add_object(
      pos,
      matrix_print:new(
-      a0+digit*2+((r+1)%2)*256,
-      6-(l%2)
+      a0+digit*2+(r%2)*256,
+      10+chk
      )
     )
    else
-    unit:settype(114)
+    unit.height0+=512
+    unit.sprite_ydelta+=512
    end
   end
  end
