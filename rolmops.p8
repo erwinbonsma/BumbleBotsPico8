@@ -1460,6 +1460,7 @@ function level:new(o)
 
  o.collected_pickups={}
  o.num_pickups=0
+ o.objects={}
 
  --invoke abstract init_map()
  o.map_model=o:init_map()
