@@ -226,10 +226,17 @@ function message_box(msgs)
  end
 end
 
-function print_await_key(action)
+function center_print(
+ msg,y,col
+)
  print(
-  "press Ž to "..action,
-  40-#action*2,120,10
+  msg,64-#msg*2,y,col
+ )
+end
+
+function print_await_key(action)
+ center_print(
+  "press Ž to "..action,120,10
  )
 end
 
@@ -1731,12 +1738,14 @@ function new_levelmenu()
  function me.draw()
   lvl:draw()
 
+  rectfill(20,7,108,22,1)
+
   local idx=level_idx()
   local name=map_defs[idx][7]
-  print(
-   "level "..idx..": "..name,
-   0,0,7
+  center_print(
+   "destination:",9,12
   )
+  center_print(name,16,7)
 
   print_await_key("start")
  end
