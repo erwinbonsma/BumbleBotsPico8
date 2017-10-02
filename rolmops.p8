@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 8
+version 10
 __lua__
 -- bumble bots
 -- (c) 2017, erwin bonsma
@@ -223,9 +223,22 @@ function smooth_clamp(h)
  return f*12
 end
 
+--note: this is a simple
+--approximation that is
+--incorrect for x=<-1,0].
+--this is no problem where it
+--is used.
+function sign(x)
+ return abs(x+1)-abs(x)
+end
+
 function sprite_address(idx)
  local c=idx%16
  return c*4+(idx-c)*32
+end
+
+function debug(msg)
+ printh(msg,"debug.txt")
 end
 
 function message_box(msgs)
@@ -488,14 +501,14 @@ function map_model:new(
    unit.row=r
    if c==o.ncol then
     if r==o.nrow then
-     unit.tiletype=35*8
+     unit.tiletype=280 --35*8
     else
-     unit.tiletype=34*8
+     unit.tiletype=272 --34*8
     end
    elseif r==o.nrow then
-    unit.tiletype=33*8
+    unit.tiletype=264 --33*8
    elseif c==1 or r==1 then
-    unit.tiletype=35*8
+    unit.tiletype=280 --35*8
    else
     unit.tiletype=
      mget(x0+c-2,y0+r-2)
@@ -811,7 +824,9 @@ end
 function mover:move_heading()
  return (
   self:heading()+
-  self.mov_dir+3
+  self.mov_dir+
+  self.mov_inc+
+  2
  )%4
 end
 
@@ -846,8 +861,8 @@ function mover:update_dx_dy()
   )*self.mov_dir
   self.dy=flr(
    (col_delta[h]+row_delta[h])
-   *self.mov/self.mov_del/2
-  )*self.mov_dir+0.5
+   *self.mov/self.mov_del/2+0.5
+  )*self.mov_dir
  else
   self.dx=0
   self.dy=0
@@ -867,31 +882,42 @@ function mover:move_step()
  self.mov+=self.mov_inc
 
  local relmov=(
-  self.mov+self.mov_max
+  self.mov*self.mov_inc+
+  self.mov_max
  )%self.mov_max
 
- if relmov==2*self.mov_del-1 then
+ --msg=
+ -- "mov="..self.mov..
+ -- ", inc="..self.mov_inc..
+ -- ", rmov="..relmov
+ --debug(msg)
+
+ if relmov==2*self.mov_del then
   -- about to enter next unit
   local to_unit=self.unit:neighbour(
    self:move_heading()
   )
   if self:can_enter(to_unit) then
    -- entered destination unit
+   --debug("entering: "..msg)
    self:entering_unit(to_unit)
   else
    -- cannot move, retreat
-   self.mov_inc=-1
+   self.mov_inc=-self.mov_inc
    self.mov+=self.mov_inc
    self:bump()
   end
  elseif relmov==4*self.mov_del then
   -- halfway crossing
-  self:enter_unit()
- elseif relmov==7*self.mov_del then
+  --debug("swap: "..msg)
+  self:swap_unit()
+ elseif relmov==6*self.mov_del+1 then
   -- exited source unit
+  --debug("exited: "..msg)
   self:exited_unit()
- elseif self.mov==0 then
+ elseif relmov==0 then
   -- done
+  --debug("move done: "..msg)
   self.mov_dir=0
   self.mov_inc=1
  end
@@ -933,11 +959,11 @@ function mover:entering_unit(to_unit)
   self.unit.col+self.unit.row
  ) then
   to_unit:add_mover(self)
-  self.mov-=self.mov_max
+  self.mov-=self.mov_max*sign(self.mov)
  end
 end
 
-function mover:enter_unit()
+function mover:swap_unit()
  --msg="enter:"..self.unit:tostring().."-"..self.unit2:tostring()
  local unit=self.unit2
  self.unit2=self.unit
@@ -948,7 +974,7 @@ function mover:exited_unit()
  --msg="exited_unit"
  if (self.draw_unit!=self.unit) then
   self.unit:add_mover(self)
-  self.mov-=self.mov_max
+  self.mov-=self.mov_max*sign(self.mov)
  end
  self.unit2=nil
 end
@@ -1056,6 +1082,11 @@ function player:entering_unit(to_unit)
  end
 end
 
+function player:swap_unit()
+ mover.swap_unit(self)
+ self.swapped=true
+end
+
 function player:update()
  if btnp(0) then
   self.nxt_rot_dir=-1
@@ -1063,22 +1094,40 @@ function player:update()
   self.nxt_rot_dir=1
  end
 
+ local desired_mov_dir=0
+ if btn(2) then
+  desired_mov_dir=1
+ elseif btn(3) then
+  desired_mov_dir=-1
+ end
+
  if self:can_start_move() then
   if self.nxt_rot_dir then
    self.rot_dir=self.nxt_rot_dir
    self.nxt_rot_dir=nil
-  elseif btn(2) then
-   self.mov_dir=1
-  elseif btn(3) then
-   self.mov_dir=-1
+  else
+   self.mov_dir=desired_mov_dir
+  end
+ elseif (
+  self:moving() and
+  desired_mov_dir!=0 and
+  self.mov_dir*self.mov_inc!=
+  desired_mov_dir
+ ) then
+  self.mov_inc=-self.mov_inc
+  --msg=
+  -- "mov="..self.mov..
+  -- ", inc="..self.mov_inc
+  --debug("toggled dir: "..msg)
+  if self.swapped then
+   --undo swap
+   self:swap_unit()
   end
  end
 
- local unit2=self.unit2
+ self.swapped=false
  bot.update(self)
- if (
-  unit2 and not self.unit2
- ) then
+ if self.swapped then
   sfx(5)
  end
 
@@ -1837,6 +1886,9 @@ function new_levelmenu()
   )
   center_print(name,16,7)
 
+  if msg then
+   print(msg,0,110,7)
+  end
   print_await_key("start")
  end
 
