@@ -74,6 +74,7 @@ objects={
  },
  {--level tst
   {9,9},
+  {3,6},
   --teleports
   {3,5,1,3,8},
   {8,7,2,8,9},
@@ -972,7 +973,7 @@ function mover:update()
  end
 
  local box=self.unit:box(self)
- if box then
+ if box and not box:moving() then
   local h=self.height-self.unit.height
   if h>0 and h<5 then
    --fell on box, destroy it
@@ -1352,7 +1353,22 @@ function box:can_enter(unit)
   --of move. once moving, assume
   --its okay.
   self:moving() or (
-   #unit.movers==0 and
+   (
+    --cannot move when unit is
+    --occupied by a mover
+    #unit.movers==0 or (
+     --unless it's a much lower
+     --box (which will then be
+     --destroyed)
+     #unit.movers==1 and
+     unit.movers[1].is_box and
+     unit.movers[1].height+6<self.height
+    )
+   ) and not (
+    --cannot move over pickup
+    unit.object and
+    unit.object.is_pickup
+   ) and
    not self.dropping and
    mover.can_enter(self,unit)
   )
