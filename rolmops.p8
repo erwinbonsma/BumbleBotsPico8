@@ -1227,7 +1227,10 @@ function enemy:draw(x,y)
 end
 
 function enemy:update()
- if self.unit==self.target.unit then
+ if (
+  self.unit==self.target.unit and
+  abs(self.height-self.target.height)<6
+ ) then
   game.signal_death(
    "caught!"
   )
