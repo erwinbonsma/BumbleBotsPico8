@@ -24,67 +24,43 @@ colmaps[0]={} --default
 
 --map_def: {x0,y0,w,h,wave_amplitude}
 --objects: {[object]}
---  object={c,r[,object_type,...]}
+--  object={c,r[,type,...]}
+--  - teleport={c,r,1-4,c2,r2}
+--  - gap={c,r,5[,col]}
 --movers: {player,[mover]*}
---  mover={c,r[,mover_type,...]}
-
+--  mover={c,r[,type,...]}
+--  - box={c,r,1}
 
 level_defs={
  --level1
  {
   name="ride the waves",
-  map_def={0,0,8,8,1,120},
-  objects={{2,2},{9,2},{2,9},{9,9}},
-  movers={{4,7},{8,3}}
+  packed="map_def={0,0,8,8,1,120},objects={{2,2},{9,2},{2,9},{9,9}},movers={{4,7},{8,3}}"
  },
  --level2
  {
   name="barsaman",
-  map_def={0,8,8,8,1.5,120},
-  objects={{2,2},{6,2},{2,6}},
-  movers= {{9,9},{9,2},{2,9}}
+  packed="map_def={0,8,8,8,1.5,120},objects={{2,2},{6,2},{2,6}},movers={{9,9},{9,2},{2,9}}"
  },
  --level3
  {
   name="gutter and stage",
-  map_def={8,0,8,8,1,180},
-  objects={{2,2},{9,2},{2,9},{4,4},{8,4},{4,8},{8,8}},
-  movers={{5,9},{5,2},{5,3}}
+  packed="map_def={8,0,8,8,1,180},objects={{2,2},{9,2},{2,9},{4,4},{8,4},{4,8},{8,8}},movers={{5,9},{5,2},{5,3}}"
  },
  --level4
  {
   name="telerium",
-  map_def={8,8,8,8,1,120},
-  objects={
-   {5,2},{2,5},{7,5},{5,7},{9,5},{5,9},
-   {2,2,1,6,5},{9,2,2,6,6},
-   {2,9,3,5,5},{9,9,4,5,6}
-  },
-  movers={{7,7},{3,3}}
+  packed="map_def={8,8,8,8,1,120},objects={{5,2},{2,5},{7,5},{5,7},{9,5},{5,9},{2,2,1,6,5},{9,2,2,6,6},{2,9,3,5,5},{9,9,4,5,6}},movers={{7,7},{3,3}}"
  },
  --level5
  {
   name="the race",
-  map_def={0,0,8,8,1,35},
-  objects={
-   {2,2},{9,2},{2,9},{9,9},
-   {5,3},{8,5},{6,8},{3,6}
-  },
-  movers={{5,5}},
+  packed="map_def={0,0,8,8,1,35},objects={{2,2},{9,2},{2,9},{9,9},{5,3},{8,5},{6,8},{3,6}},movers={{5,5}}"
  },
  --level6
  {
   name="mind the gap",
-  map_def={16,0,8,8,1,120},
-  objects={
-   {3,3},{8,3},{3,8},{8,8},
-   --gaps(c,r,5[,col])
-   {3,4,5},{4,3,5},{4,4,5},{5,3,5},
-  },
-  movers={
-   {6,6},{2,2},
-   {4,6,1},{4,7,1},{6,5,1},{8,5,1}
-  }
+  packed="map_def={16,0,8,8,1,120},objects={{3,3},{8,3},{3,8},{8,8},{3,4,5},{4,3,5},{4,4,5},{5,3,5}},movers={{6,6},{2,2},{4,6,1},{4,7,1},{6,5,1},{8,5,1}}"
  },
  --level7
  {
@@ -106,6 +82,60 @@ level_defs={
  }
 }
 
+function unpack(s)
+ local a={}
+ local key,val,c,auto,ob
+ local i=1
+ local l=0
+ s=s..","  auto=1
+ while i<=#s do
+  c=sub(s,i,i)
+  if c=="{" then
+   l=i
+   ob=1
+   while ob>0 do
+    i+=1
+    c=sub(s,i,i)
+    if c=="}" then ob-=1
+    elseif c=="{" then ob+=1 end
+   end
+   val=unpack(sub(s,l+1,i-1))
+   if not key then
+    key=auto
+    auto+=1
+   end
+   a[key]=val
+   key=false
+   i+=1 --skip comma
+   l=i
+  elseif c=="=" then
+   key=sub(s,l+1,i-1)
+   l=i
+  elseif c=="," and l~=i-1 then
+   val=sub(s,l+1,i-1)
+   local valc=sub(val,#val,#val)
+   if valc>="0" and valc<="9" then
+    val=val*1
+    -- cover for a bug in string conversion
+    val=shl(shr(val,1),1)
+   elseif val=="true" then
+    val=true
+   elseif val=="false" then
+    val=false
+   end
+   l=i
+   if not key then
+    key=auto
+    auto+=1
+   end
+   a[key]=val
+   key=false
+  end
+  i+=1
+ end
+ return a
+end
+
 --fields
 -- sprite index, sprite height,
 -- sprite y-delta, sprite repeat,
@@ -123,61 +153,61 @@ tiletypes={}
 --boundary at edge of map. moving
 --tiles are actual size, which
 --results in less clean map boundary.
-tiletypes[0]={14,2,0,true,-1,0,3}
+tiletypes[0]=unpack("14,2,0,true,-1,0,3")
 
 --basic, fixed
-tiletypes[1]={0,3,0,false,-1,0,0}
+tiletypes[1]=unpack("0,3,0,false,-1,0,0")
 
 --basic, low flexibility
-tiletypes[2]={14,2,0,false,-1,0,1}
+tiletypes[2]=unpack("14,2,0,false,-1,0,1")
 
 --elevator, up+down
-tiletypes[3]={2,3,0,true,0,0,10}
+tiletypes[3]=unpack("2,3,0,true,0,0,10")
 
 --pillar, moving
-tiletypes[4]={4,2,1,true,0,0,2}
+tiletypes[4]=unpack("4,2,1,true,0,0,2")
 
 --pillar, fixed
-tiletypes[5]={4,2,1,true,0,0,0}
+tiletypes[5]=unpack("4,2,1,true,0,0,0")
 
 --tower1, fixed
-tiletypes[6]={6,4,-4,true,0,20,0}
+tiletypes[6]=unpack("6,4,-4,true,0,20,0")
 
 --tower2, fixed
-tiletypes[7]={8,4,-1,true,0,15,0}
+tiletypes[7]=unpack("8,4,-1,true,0,15,0")
 
 --bridge, middle
-tiletypes[8]={36,3,0,false,0,8,0}
+tiletypes[8]=unpack("36,3,0,false,0,8,0")
 
 --bridge, top-left
-tiletypes[9]={10,3,0,true,0,8,0}
+tiletypes[9]=unpack("10,3,0,true,0,8,0")
 
 --bridge, bottom-right
-tiletypes[10]={12,3,0,true,0,8,0}
+tiletypes[10]=unpack("12,3,0,true,0,8,0")
 
 --basic, fixed, light
-tiletypes[11]={0,3,0,false,0,0,0}
+tiletypes[11]=unpack("0,3,0,false,0,0,0")
 
 --basic, fixed, blue
-tiletypes[12]={0,3,0,false,5,0,0}
+tiletypes[12]=unpack("0,3,0,false,5,0,0")
 
 --basic, fixed, dark
-tiletypes[13]={0,3,0,false,1,0,0}
+tiletypes[13]=unpack("0,3,0,false,1,0,0")
 
 --gap, row-dir, front
-tiletypes[33]={65,3,-248,true,0,-256,0}
+tiletypes[33]=unpack("65,3,-248,true,0,-256,0")
 
 --gap, col-dir, front
-tiletypes[34]={64,3,-248,true,0,-256,0}
+tiletypes[34]=unpack("64,3,-248,true,0,-256,0")
 
 --gap, back
-tiletypes[35]={0,0,-248,false,0,-256,0}
+tiletypes[35]=unpack("0,0,-248,false,0,-256,0")
 
 --basic, fixed, blue (top-only)
-tiletypes[36]={0,3,0,false,6,0,0}
+tiletypes[36]=unpack("0,3,0,false,6,0,0")
 
 --basic, fixed, green (top-only)
-tiletypes[37]={0,3,0,false,7,0,0}
+tiletypes[37]=unpack("0,3,0,false,7,0,0")
 
 --global game state
 cartdata("eriban_bumblebots")
@@ -1704,6 +1734,10 @@ function level:new(idx,o)
  o.idx=idx
  o.def=level_defs[idx]
 
+ if o.def.packed then
+  o.def=unpack(o.def.packed)
+ end
+
  baselevel.new(self,o)
  local o=setmetatable(o,self)
  self.__index=self
@@ -1732,7 +1766,6 @@ function level:init_map()
   )
  )
  self.time_left=map_def[6]*30
- self.name=map_def[7]
 
  return map_model
 end
@@ -2093,7 +2126,7 @@ function level_start_animation()
  local clk=0
  local msg={
   "level "..lvl.idx,
-  lvl.name
+  level_defs[lvl.idx].name
  }
 
  function me.update()
