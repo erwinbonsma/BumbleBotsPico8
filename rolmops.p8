@@ -22,111 +22,87 @@ colmaps={
 }
 colmaps[0]={} --default
 
---x0,y0,w,h,wave_amplitude
-map_defs={
- --level 1
- {0,0,8,8,1,120,"ride the waves"},
- --level 2
- {0,8,8,8,1.5,120,"barsaman"},
- --level 3
- {8,0,8,8,1,180,"gutter and stage"},
- --level 4
- {8,8,8,8,1,120,"telerium"},
- --level 5
- {0,0,8,8,1,35,"the race"},
- --level 6
- {16,0,8,8,1,120,"mind the gap"},
- --level tst
- {16,8,8,8,1,120,"test"}
-}
+--map_def: {x0,y0,w,h,wave_amplitude}
+--objects: {[object]}
+--  object={c,r[,object_type,...]}
+--movers: {player,[mover]*}
+--  mover={c,r[,mover_type,...]}
 
-objects={
- {--level 1
-  {2,2},{9,2},{2,9},{9,9}
- },
- {--level 2
-  {2,2},{6,2},{2,6}
- },
- {--level 3
-  {2,2},{9,2},{2,9},
-  {4,4},{8,4},{4,8},{8,8}
- },
- {--level 4
-  {5,2},{2,5},{7,5},{5,7},
-  {9,5},{5,9},
-  --teleports(c1,r1,col,c2,r2)
-  {2,2,1,6,5},
-  {9,2,2,6,6},
-  {2,9,3,5,5},
-  {9,9,4,5,6}
- },
- {--level 5
-  {2,2},{9,2},{2,9},{9,9},
-  {5,3},{8,5},{6,8},{3,6}
- },
- {--level 6
-  {3,3},{8,3},{3,8},{8,8},
-  --gaps(c,r,5[,col])
-  {3,4,5},
-  {4,3,5},
-  {4,4,5},
-  {5,3,5},
- },
- {--level tst
-  {9,9},
-  {3,6},
-  --teleports
-  {3,5,1,3,8},
-  {8,7,2,8,9},
-  {4,4,3,7,4},
- }
-}
 
-movers={
- {--level 1
-  {4,7}, --player
-  {8,3} --enemy
+level_defs={
+ --level1
+ {
+  name="ride the waves",
+  map_def={0,0,8,8,1,120},
+  objects={{2,2},{9,2},{2,9},{9,9}},
+  movers={{4,7},{8,3}}
  },
- {--level 2
-  {9,9}, --player
-  {9,2},{2,9} --enemies
+ --level2
+ {
+  name="barsaman",
+  map_def={0,8,8,8,1.5,120},
+  objects={{2,2},{6,2},{2,6}},
+  movers= {{9,9},{9,2},{2,9}}
  },
- {--level 3
-  {5,9}, --player
-  {5,2},{5,3} --enemies
+ --level3
+ {
+  name="gutter and stage",
+  map_def={8,0,8,8,1,180},
+  objects={{2,2},{9,2},{2,9},{4,4},{8,4},{4,8},{8,8}},
+  movers={{5,9},{5,2},{5,3}}
  },
- {--level 4
-  {7,7}, --player
-  {3,3} --enemy
+ --level4
+ {
+  name="telerium",
+  map_def={8,8,8,8,1,120},
+  objects={
+   {5,2},{2,5},{7,5},{5,7},{9,5},{5,9},
+   {2,2,1,6,5},{9,2,2,6,6},
+   {2,9,3,5,5},{9,9,4,5,6}
+  },
+  movers={{7,7},{3,3}}
  },
- {--level 5
-  {5,5}
+ --level5
+ {
+  name="the race",
+  map_def={0,0,8,8,1,35},
+  objects={
+   {2,2},{9,2},{2,9},{9,9},
+   {5,3},{8,5},{6,8},{3,6}
+  },
+  movers={{5,5}},
  },
- {--level 6
-  {6,6}, --player
-  {2,2},
-  --boxes
-  {4,6,1},
-  {4,7,1},
-  {6,5,1},
-  {8,5,1}
+ --level6
+ {
+  name="mind the gap",
+  map_def={16,0,8,8,1,120},
+  objects={
+   {3,3},{8,3},{3,8},{8,8},
+   --gaps(c,r,5[,col])
+   {3,4,5},{4,3,5},{4,4,5},{5,3,5},
+  },
+  movers={
+   {6,6},{2,2},
+   {4,6,1},{4,7,1},{6,5,1},{8,5,1}
+  }
  },
- {--level tst
-  {8,5}, --player
-  {2,9}, --enemy
-  --boxes
-  {2,3,1},
-  {3,3,1},
-  {4,3,1},
-  {5,3,1},
-  {6,3,1},
-  {7,3,1},
-  {2,4,1},
-  {5,4,1},
-  {4,6,1},
-  {5,6,1},
-  {8,6,1},
-  {5,8,1},
+ --level7
+ {
+  name="test",
+  map_def={16,8,8,8,1,120},
+  objects={
+   {9,9},{3,6},
+   --teleports
+   {3,5,1,3,8},{8,7,2,8,9},
+   {4,4,3,7,4}
+  },
+  movers={
+   {8,5},{2,9},
+   --boxes
+   {2,3,1},{3,3,1},{4,3,1},{5,3,1},
+   {6,3,1},{7,3,1},{2,4,1},{5,4,1},
+   {4,6,1},{5,6,1},{8,6,1},{5,8,1}
+  }
  }
 }
 
@@ -1575,9 +1551,9 @@ function matrix_print:visit()
  --void
 end
 
-level={}
+baselevel={}
 
-function level:new(o)
+function baselevel:new(o)
  o=o or {}
  local o=setmetatable(o,self)
  self.__index=self
@@ -1595,14 +1571,16 @@ function level:new(o)
  return o
 end
 
-function level:init_camera(
+function baselevel:init_camera(
  player_pos
 )
  self.camera_pos=
   self:target_camera_pos(player_pos)
 end
 
-function level:add_mover(pos,mover)
+function baselevel:add_mover(
+ pos,mover
+)
  local unit=
   self.map_model:unit_at(pos)
  unit:add_mover(mover)
@@ -1610,14 +1588,16 @@ function level:add_mover(pos,mover)
  add(self.movers,mover)
 end
 
-function level:add_object(pos,object)
+function baselevel:add_object(
+ pos,object
+)
  self.map_model:unit_at(pos):add_object(
   object
  )
  add(self.objects,object)
 end
 
-function level:reset()
+function baselevel:reset()
  --destroy movers
  for mover in all(self.movers) do
   mover:destroy()
@@ -1641,13 +1621,13 @@ function level:reset()
  )
 end
 
-function level:freeze()
+function baselevel:freeze()
  for mover in all(self.movers) do
   mover:freeze()
  end
 end
 
-function level:pickup_collected(
+function baselevel:pickup_collected(
  pickup
 )
  add(
@@ -1664,7 +1644,7 @@ function level:pickup_collected(
  end
 end
 
-function level:update()
+function baselevel:update()
  self.map_model:update()
 
  for mover in all(self.movers) do
@@ -1672,7 +1652,7 @@ function level:update()
  end
 end
 
-function level:set_target_camera_pos(
+function baselevel:set_target_camera_pos(
  c,r,update_pos
 )
  c=max(
@@ -1694,7 +1674,7 @@ function level:set_target_camera_pos(
  end
 end
 
-function level:draw()
+function baselevel:draw()
  if self.player then
   self:set_target_camera_pos(
    self.player.unit.col,
@@ -1716,18 +1696,19 @@ function level:draw()
  camera()
 end
 
-leveldef={}
-extend(leveldef,level)
+level={}
+extend(level,baselevel)
 
-function leveldef:new(idx,o)
+function level:new(idx,o)
  o=o or {}
  o.idx=idx
+ o.def=level_defs[idx]
 
- level.new(self,o)
+ baselevel.new(self,o)
  local o=setmetatable(o,self)
  self.__index=self
 
- for object_specs in all(objects[idx]) do
+ for object_specs in all(o.def.objects) do
   o:add_object_from_specs(
    object_specs
   )
@@ -1736,8 +1717,8 @@ function leveldef:new(idx,o)
  return o
 end
 
-function leveldef:init_map()
- local map_def=map_defs[self.idx]
+function level:init_map()
+ local map_def=self.def.map_def
  local map_model=map_model:new(
   map_def[1],
   map_def[2],
@@ -1757,7 +1738,7 @@ function leveldef:init_map()
 end
 
 --create new object and add it
-function leveldef:add_object_from_specs(
+function level:add_object_from_specs(
  specs
 )
  local object_type=specs[3]
@@ -1785,7 +1766,7 @@ function leveldef:add_object_from_specs(
  end
 end
 
-function leveldef:add_mover_from_specs(
+function level:add_mover_from_specs(
  specs
 )
  if not self.player then
@@ -1805,16 +1786,16 @@ function leveldef:add_mover_from_specs(
  end
 end
 
-function leveldef:reset()
- level.reset(self)
+function level:reset()
+ baselevel.reset(self)
 
  self:set_target_camera_pos(
-  movers[self.idx][1]
+  self.def.movers[1]
  )
 end
 
-function leveldef:start()
- for mover_specs in all(movers[self.idx]) do
+function level:start()
+ for mover_specs in all(self.def.movers) do
   self:add_mover_from_specs(
    mover_specs
   )
@@ -1823,13 +1804,13 @@ function leveldef:start()
  self.playing=true
 end
 
-function leveldef:freeze()
- level.freeze(self)
+function level:freeze()
+ baselevel.freeze(self)
 
  self.playing=false
 end
 
-function leveldef:update()
+function level:update()
  if self.playing then
   self.time_left-=1
 
@@ -1840,11 +1821,11 @@ function leveldef:update()
   end
  end
 
- level.update(self)
+ baselevel.update(self)
 end
 
-function leveldef:draw()
- level.draw(self)
+function level:draw()
+ baselevel.draw(self)
 
  print(
   timestr(self.time_left/30),
@@ -1854,10 +1835,10 @@ function leveldef:draw()
 end
 
 levelmenu={}
-extend(levelmenu,level)
+extend(levelmenu,baselevel)
 
 function levelmenu:new(o)
- o=level.new(self,o)
+ o=baselevel.new(self,o)
  local o=setmetatable(o,self)
  self.__index=self
 
@@ -1946,11 +1927,12 @@ function new_levelmenu()
   rectfill(20,7,108,22,1)
 
   local idx=level_idx()
-  local name=map_defs[idx][7]
   center_print(
    "destination:",9,12
   )
-  center_print(name,16,7)
+  center_print(
+   level_defs[idx].name,16,7
+  )
 
   if msg then
    print(msg,0,110,7)
@@ -2029,7 +2011,7 @@ function new_game(level_num)
   if lvl.time_left<=0 then
    --hard reset on time-out:
    --reset all pick-ups
-   lvl=leveldef:new(
+   lvl=level:new(
     level_num
    )
   end
@@ -2055,8 +2037,8 @@ function new_game(level_num)
 
  function me.next_level()
   level_num+=1
-  if level_num<=#map_defs then
-   lvl=leveldef:new(level_num)
+  if level_num<=#level_defs then
+   lvl=level:new(level_num)
    return true
   end
  end
