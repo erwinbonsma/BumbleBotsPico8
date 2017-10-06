@@ -1231,6 +1231,7 @@ function enemy:new(target,o)
  self.__index=self
  
  o.target=target
+ o.bump_count=0
 
  return o
 end
@@ -1293,8 +1294,15 @@ function enemy:heading_score(h)
  end
 
  if h==self:heading() then
-  --prefer moving straight
-  score+=1
+  if self.bump_count<=3 then
+   --prefer moving straight
+   score+=1
+  else
+   --unless that failed three
+   --times in a row, to prevent
+   --deadlock situations
+   score-=20
+  end
  end
 
  if self:can_enter(to_unit) then
@@ -1365,6 +1373,12 @@ end
 function enemy:bump()
  bot.bump(self)
  self.dazed+=flr(rnd(20))-10
+ self.bump_count+=1
+end
+
+function enemy:turn_step()
+ mover.turn_step(self)
+ self.bump_count=0
 end
 
 box={}
