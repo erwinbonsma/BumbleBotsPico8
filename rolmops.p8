@@ -1412,7 +1412,7 @@ function box:can_enter(unit)
     unit.object.is_pickup
    ) and
    --cannot move once dropping
-   not self.dropping and
+   not self.drop and
    not unit.enemy_entering and
    mover.can_enter(self,unit)
   )
