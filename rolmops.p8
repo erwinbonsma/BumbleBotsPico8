@@ -1992,7 +1992,9 @@ function levelmenu:init_map()
    if l then
     local chk=
      (flr(c/2)+flr(r/2))%2
-    if l<=maxlevel then
+    if l<=min(
+     maxlevel,#level_defs
+    ) then
      unit:settype(288+chk*8)
     else
      unit:settype(290+chk*8)
@@ -2075,10 +2077,10 @@ function new_game(level_num)
  local me={}
 
  local anim=nil
- local level_num=level_num or 0
  local lives=3
  local death_cause
 
+ me.level_num=level_num
  score=0
 
  function me.draw()
@@ -2132,7 +2134,7 @@ function new_game(level_num)
    --recreate level, resetting
    --time and all pick-ups
    lvl=level:new(
-    level_num
+    me.level_num
    )
   end
   lvl:reset()
@@ -2156,9 +2158,9 @@ function new_game(level_num)
  end
 
  function me.next_level()
-  level_num+=1
-  if level_num<=#level_defs then
-   lvl=level:new(level_num)
+  me.level_num+=1
+  if me.level_num<=#level_defs then
+   lvl=level:new(me.level_num)
    return true
   end
  end
@@ -2328,7 +2330,7 @@ function game_done_animation()
  hiscore=max(hiscore,score)
  dset(0,hiscore)
 
- maxlevel=max(maxlevel,lvl.idx)
+ maxlevel=max(maxlevel,game.level_num)
  dset(1,maxlevel)
 
  lvl:freeze()
