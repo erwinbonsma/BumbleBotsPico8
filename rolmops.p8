@@ -22,7 +22,8 @@ colmaps={
 }
 colmaps[0]={} --default
 
---map_def: {x0,y0,w,h,wave_amplitude}
+--map_def: {x0,y0,w,h,wave_amp,
+--          time}
 --objects: {[object]}
 --  object={c,r[,type,...]}
 --  - teleport={c,r,1-4,c2,r2}
@@ -55,7 +56,7 @@ level_defs={
  --level5
  {
   name="the race",
-  packed="map_def={0,0,8,8,1,35},objects={{2,2},{9,2},{2,9},{9,9},{5,3},{8,5},{6,8},{3,6}},movers={{5,5}}"
+  packed="map_def={0,0,8,8,1,-35},objects={{2,2},{9,2},{2,9},{9,9},{5,3},{8,5},{6,8},{3,6}},movers={{5,5}}"
  },
  --level6
  {
@@ -70,7 +71,7 @@ level_defs={
  --level8
  {
   name="tea party",
-  packed="map_def={24,8,8,8,1,240},objects={{9,2},{9,3,5,1},{9,4,5},{8,4,5,1},{9,7,1,9,9}},movers={{2,9},{2,2},{3,2},{2,8,1},{3,8,1},{4,8,1},{5,8,1},{6,8,1},{7,8,1},{8,8,1},{9,8,1}}"
+  packed="map_def={24,8,8,8,1,-240},objects={{9,2},{9,3,5,1},{9,4,5},{8,4,5,1},{9,7,1,9,9}},movers={{2,9},{2,2},{3,2},{2,8,1},{3,8,1},{4,8,1},{5,8,1},{6,8,1},{7,8,1},{8,8,1},{9,8,1}}"
  },
  {
   name="test",
@@ -1843,7 +1844,10 @@ function level:init_map()
    0.10,{a=map_def[5]}
   )
  )
- self.time_left=map_def[6]*30
+ self.time_left=abs(
+  map_def[6]*30
+ )
+ self.hard_reset=map_def[6]<0
 
  return map_model
 end
@@ -2119,9 +2123,14 @@ function new_game(level_num)
  end
 
  function me.reset()
-  if lvl.time_left<=0 then
-   --hard reset on time-out:
-   --reset all pick-ups
+  if (
+   --hard reset on time-out
+   lvl.time_left<=0 or
+   --and for specific levels
+   lvl.hard_reset
+  ) then
+   --recreate level, resetting
+   --time and all pick-ups
    lvl=level:new(
     level_num
    )
