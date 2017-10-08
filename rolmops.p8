@@ -1323,6 +1323,7 @@ end
 function enemy:update()
  if (
   self.unit==self.target.unit and
+  not self.target.falling and
   abs(self.height-self.target.height)<6
  ) then
   game.signal_death(
@@ -1503,7 +1504,7 @@ function box:can_enter(unit)
   return false
  end
 
- return true
+ return mover.can_enter(self,unit)
 end
 
 function box:entering_unit(to_unit)
