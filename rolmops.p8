@@ -472,8 +472,15 @@ end
 
 --returns enemy at unit, if any
 function map_unit:enemy()
- for k,mover in pairs(self.movers) do
-  if mover.is_enemy then
+ --iterate all movers instead of
+ --movers at this unit, as the
+ --latter is based on drawing
+ --logic
+ for k,mover in pairs(lvl.movers) do
+  if (
+   mover.is_enemy and
+   mover.unit==self
+  ) then
    return mover
   end
  end
