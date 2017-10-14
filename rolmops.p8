@@ -11,18 +11,6 @@ row_delta={0,1,0}
 col_delta[0]=0
 row_delta[0]=-1
 
-colmaps={
- {80,101,118}, --b&w to dark
- {131,155}, --teleport green
- {129,156}, --teleport blue
- {141,158}, --teleport pink
- {81,109,124}, --b&w to blue
- {113}, --white to dark-blue
- {115}, --white to dark-green
- {166,157,65} --box blue
-}
-colmaps[0]={} --default
-
 --map_def: {x0,y0,w,h,wave_amp,
 --          time}
 --objects: {[object]}
@@ -176,6 +164,21 @@ function unpack(s)
  return a
 end
 
+--[[
+color maps:
+ 1: b&w to dark
+ 2: teleport, green
+ 3: teleport, blue
+ 4: teleport, pink
+ 5: b&w to blue
+ 6: white to dark-blue
+ 7: white to dark-green
+ 8: title screen bot
+ 9: gap filled by box
+]]
+colmaps=unpack("{80,101,118},{131,155},{129,156},{141,158},{81,109,124},{113},{115},{206,29,210,86,101},{86,102}")
+colmaps[0]={} --default
+
 --fields
 -- sprite index, sprite height,
 -- sprite y-delta, sprite repeat,
@@ -296,8 +299,9 @@ function timestr(time_in_sec)
 end
 
 -- multiple pal() map changes
-function multipal(palmap)
- for v in all(palmap) do
+function multipal(colmap_idx)
+ for v in all(colmaps[colmap_idx]
+ ) do
   pal(shr(v,4),band(v,15))
  end
 end
@@ -386,7 +390,7 @@ function mainscreen_draw()
  -- draw bots
  pal(15,5)
  spr(160,0,52,6,6)
- multipal({206,29,210,86,101})
+ multipal(8)
  spr(160,80,8,6,6,true)
  pal()
 
@@ -712,12 +716,12 @@ function isoline_leaf:draw()
   -unit.height+24
 
  if unit.colmap_idx>0 then
-  multipal(colmaps[unit.colmap_idx])
+  multipal(unit.colmap_idx)
  elseif (
   unit.colmap_idx<0 and
   (unit.col+unit.row)%2==0
  ) then
-  multipal(colmaps[-unit.colmap_idx])
+  multipal(-unit.colmap_idx)
  end
 
  palt(0,false)
@@ -1639,9 +1643,7 @@ function teleport:reset()
 end
 
 function teleport:draw(x,y)
- multipal(
-  colmaps[self.colmap_idx]
- )
+ multipal(self.colmap_idx)
  spr(139,x,y+1,2,1)
  if self.cooldown_cnt>0 then
   self.cooldown_cnt-=1
@@ -1737,12 +1739,10 @@ end
 
 function gap:draw(x,y)
  if self.filled then
-  multipal({86,102})
+  multipal(9)
  else
   if self.colmap_idx then
-   multipal(
-    colmaps[self.colmap_idx]
-   )
+   multipal(self.colmap_idx)
   end
  end
  spr(154,x,y+4,2,1)
