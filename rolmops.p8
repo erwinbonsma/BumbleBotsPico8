@@ -408,7 +408,6 @@ end
 function show_mainscreen()
  _update=mainscreen_update
  _draw=mainscreen_draw
- menuitem(1)
 end
 
 function show_levelmenu()
@@ -2327,7 +2326,18 @@ function new_game(level_num)
  end
 
  menuitem(
-  1,"restart",show_mainscreen
+  1,"auto destruct",function()
+   me.signal_death(
+    "auto destruct"
+   )
+   me.handle_death()
+  end
+ )
+ menuitem(
+  2,"abort game",function()
+   lives=0
+   anim=game_done_animation()
+  end
  )
  me.next_level()
  anim=level_start_animation()
@@ -2502,6 +2512,9 @@ function game_done_animation()
   msg={"end of the line!"}
   sfx(4)
  end
+
+ menuitem(1)
+ menuitem(2)
 
  return me
 end --game_done_animation
