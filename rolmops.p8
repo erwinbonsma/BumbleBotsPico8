@@ -374,21 +374,17 @@ function debug(msg)
  printh(msg,"debug.txt")
 end
 
-function new_message_box()
+function new_msg_box(_msgs)
  local me={}
 
- local msgs={}
+ local msgs=_msgs
  local cursor_idx=0
 
- me.text=function(
-  new_msgs,append
+ me.append=function(
+  new_msgs
  )
-  if append then
-   add(msgs,"")
-  else
-   msgs={}
-   cursor_idx=0
-  end
+  --always add empty line
+  add(msgs,"")
   for msg in all(new_msgs) do
    add(msgs,msg)
   end
@@ -396,7 +392,7 @@ function new_message_box()
 
  me.draw=function()
   rect(30,38,98,90,5)
-  rect(30,38,97,88,7)
+  rect(30,38,97,89,7)
   rect(31,39,97,89,6)
   rectfill(32,40,96,88,0)
 
@@ -426,9 +422,7 @@ function new_message_box()
  end
 
  return me
-end --new_message_box()
-
-msg_box=new_message_box()
+end --new_msg_box()
 
 function center_print(
  msg,y,col
@@ -1420,7 +1414,7 @@ function enemy:update()
   abs(self.height-self.target.height)<6
  ) then
   game.signal_death(
-   "caught!"
+   "intercepted!"
   )
  end
 
@@ -2182,7 +2176,9 @@ function level:draw()
  print(
   timestr(self.time_left/30),
   56,2,
-  8+min(3,flr(self.time_left/300))
+  8+min(3,flr(abs(
+   self.time_left/300
+  )))
  )
 end
 
@@ -2405,7 +2401,7 @@ function new_game(level_num)
  menuitem(
   1,"auto destruct",function()
    me.signal_death(
-    "auto destruct"
+    "rebooting..."
    )
    me.handle_death()
   end
@@ -2426,6 +2422,9 @@ function die_animation(cause)
  local me={}
 
  local clk=0
+ local msg_box=new_msg_box({
+  cause
+ })
 
  function me.update()
   clk+=1
@@ -2447,13 +2446,13 @@ function die_animation(cause)
  end
 
  function me.draw()
-  msg_box.draw()
+  if clk>30 then
+   msg_box.draw()
+  end
  end
 
  lvl.map_model.wave_strength_delta=-1
  lvl:freeze()
-
- msg_box.text({cause})
 
  return me
 end --die_animation
@@ -2462,14 +2461,19 @@ function level_start_animation()
  local me={}
 
  local clk=0
+ local msg_box=new_msg_box({
+  "level "..lvl.idx..":",
+  level_defs[lvl.idx].name
+ })
+
 
  function me.update()
   clk+=1
 
   if clk==80 then
-   msg_box.text({
+   msg_box.append({
     "ready to bumble?"
-   },true)
+   })
   end
 
   if clk==140 then
@@ -2484,11 +2488,6 @@ function level_start_animation()
   msg_box.draw()
  end
 
- msg_box.text({
-  "level "..lvl.idx..":",
-  level_defs[lvl.idx].name
- })
-
  return me
 end --level_start_animation
 
@@ -2497,6 +2496,9 @@ function level_done_animation()
  local me={}
 
  local clk=0
+ local msg_box=new_msg_box({
+  "level done"
+ })
 
  function me.update()
   clk+=1
@@ -2505,16 +2507,20 @@ function level_done_animation()
    sfx(6)
   end
 
-  if clk>60 then
+  if clk==60 then
    if lvl.time_left>0 then
     lvl.time_left-=30
     score+=1
     sfx(8)
-    clk=60
+    clk=59
    end
   end
 
-  if clk==100 then
+  if clk==60 then
+   msg_box.append({"bumble on!"})
+  end
+
+  if clk==120 then
    if game.next_level() then
     return level_start_animation()
    else
@@ -2538,11 +2544,6 @@ function level_done_animation()
  )
  lvl:freeze()
 
- msg_box.text({
-  "level done",
-  "bumble on!"
- })
-
  return me
 end --level_done_animation
 
@@ -2550,6 +2551,17 @@ function game_done_animation()
  local me={}
 
  local clk=0
+ local msg
+
+ if game.game_over() then
+  msg="game over"
+  sfx(2)
+ else
+  msg="end of the line!"
+  sfx(4)
+ end
+
+ local msg_box=new_msg_box({msg})
 
  function me.update()
   clk+=1
@@ -2559,10 +2571,10 @@ function game_done_animation()
   end
 
   if clk==60 then
-   msg_box.text({
+   msg_box.append({
     "score: "..score,
     "hiscore: "..hiscore
-   },true)
+   })
   end
 
   return me
@@ -2582,16 +2594,7 @@ function game_done_animation()
  maxlevel=max(maxlevel,game.level_num)
  dset(1,maxlevel)
 
- local msg
  lvl:freeze()
- if game.game_over() then
-  msg="game over"
-  sfx(2)
- else
-  msg="end of the line!"
-  sfx(4)
- end
- msg_box.text({msg})
 
  menuitem(1)
  menuitem(2)
@@ -2652,11 +2655,11 @@ ff000000ffffffff0000000fffbbbbbbbbbbbbbfffff38bb3333ffffff8998899889988fffffff3a
 00000000ffffffff00000000444444444455445544444bbbbb44554466677666555566556666666755555555ffffffffffffffffffffffffffffffff8ffffff8
 00000000ffffffff0000000044444444554455444444444b4455445566666766555655556666666655555555ffffffffffffffffffffffffffffffff88888888
 00000000ffffffff000000004444444444554455444444445544554466666666555555556666666655555555ffffff11122fffffffffffff3fffffff88888888
-00000000ffffffff000000004444444455445544444444444455445566666666555555556666666655555555ffff116666622fffffffff33bb3fffff8ffffff8
-00000000ffffffff000000004444444444554455444444445544554466666666555555556666666655555555fff16666666662ffffff33bb333bbfff8ffffff8
-00000000ffffffff000000004444444455445544444444444455445566666666555555556666666655555555ff2666666666661fff33bb333bb333bf8ffffff8
-00000000ffffffff000000004444444444554455444444445544554466666666555555556666666655555555ff2266666666611f33bb333bb333bb338ffffff8
-00000000ffffffff000000004444444455445544444444444455445566666666555555556666666655555555ff2222666661111f6b333bb333bb33dd8ffffff8
+00000000ffffffff000000004444444455445544444444444455445566666666555555556666666655555555ffff117777722fffffffff33bb3fffff8ffffff8
+00000000ffffffff000000004444444444554455444444445544554466666666555555556666666655555555fff17777777772ffffff33bb333bbfff8ffffff8
+00000000ffffffff000000004444444455445544444444444455445566666666555555556666666655555555ff2777777777771fff33bb333bb333bf8ffffff8
+00000000ffffffff000000004444444444554455444444445544554466666666555555556666666655555555ff2277777777711f33bb333bb333bb338ffffff8
+00000000ffffffff000000004444444455445544444444444455445566666666555555556666666655555555ff2222777771111f6b333bb333bb33dd8ffffff8
 00000000ffffffff000000004444444444554455444444445544554466666666555555556666666655555555ff2222221111111ff66bb333bb33ddff8ffffff8
 00000000ffffffff000000004444444455445544444444444455445566666666555555556666666655555555ff2222222111111ffff663bb33ddffff88888888
 0000000000000000000000000000000000000000088888888888888888888888888888880000000000000000ff2222221111111ffffff663ddffffff88888888
