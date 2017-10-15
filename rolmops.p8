@@ -374,28 +374,61 @@ function debug(msg)
  printh(msg,"debug.txt")
 end
 
-function message_box(msgs)
- local maxlen=0
- foreach(
-  msgs,
-  function(msg)
-   maxlen=max(#msg,maxlen)
+function new_message_box()
+ local me={}
+
+ local msgs={}
+ local cursor_idx=0
+
+ me.text=function(
+  new_msgs,append
+ )
+  if append then
+   add(msgs,"")
+  else
+   msgs={}
+   cursor_idx=0
   end
- )
-
- local y=63-#msgs*3
- rectfill(
-  63-maxlen*2,y,
-  63+maxlen*2,y+#msgs*6,0
- )
-
- for msg in all(msgs) do
-  print(
-   msg,64-#msg*2,y+1,10
-  )
-  y+=6
+  for msg in all(new_msgs) do
+   add(msgs,msg)
+  end
  end
-end
+
+ me.draw=function()
+  rect(30,38,98,90,5)
+  rect(30,38,97,88,7)
+  rect(31,39,97,89,6)
+  rectfill(32,40,96,88,0)
+
+  local y=41
+  local rem_chars=flr(
+   cursor_idx/2
+  )+1
+  for msg in all(msgs) do
+   if rem_chars>0 then
+    local l=min(#msg,rem_chars)
+    print(
+     sub(msg,1,l),33,y,11
+    )
+    rem_chars-=l
+    if rem_chars==0 then
+     cursor_idx+=1
+     if (
+      cursor_idx%2 and l<16
+     ) then
+      print("_",33+l*4,y,11)
+     end
+     l=rem_chars
+    end
+    y+=6
+   end
+  end
+ end
+
+ return me
+end --new_message_box()
+
+msg_box=new_message_box()
 
 function center_print(
  msg,y,col
@@ -2391,7 +2424,6 @@ end --new_game()
 
 function die_animation(cause)
  local me={}
- local msg={cause}
 
  local clk=0
 
@@ -2415,11 +2447,13 @@ function die_animation(cause)
  end
 
  function me.draw()
-  message_box(msg)
+  msg_box.draw()
  end
 
  lvl.map_model.wave_strength_delta=-1
  lvl:freeze()
+
+ msg_box.text({cause})
 
  return me
 end --die_animation
@@ -2428,22 +2462,17 @@ function level_start_animation()
  local me={}
 
  local clk=0
- local msg={
-  "level "..lvl.idx,
-  level_defs[lvl.idx].name
- }
 
  function me.update()
   clk+=1
 
-  if clk==50 then
-   msg={
-    "ready to",
-    "bumble?!"
-   }
+  if clk==80 then
+   msg_box.text({
+    "ready to bumble?"
+   },true)
   end
 
-  if clk==100 then
+  if clk==140 then
    lvl:start()
    return nil
   end
@@ -2452,8 +2481,13 @@ function level_start_animation()
  end
 
  function me.draw()
-  message_box(msg)
+  msg_box.draw()
  end
+
+ msg_box.text({
+  "level "..lvl.idx..":",
+  level_defs[lvl.idx].name
+ })
 
  return me
 end --level_start_animation
@@ -2493,10 +2527,7 @@ function level_done_animation()
 
  function me.draw()
   if clk>=20 then
-   message_box({
-    "level done",
-    "bumble on!"
-   })
+   msg_box.draw()
   end
  end
 
@@ -2507,6 +2538,11 @@ function level_done_animation()
  )
  lvl:freeze()
 
+ msg_box.text({
+  "level done",
+  "bumble on!"
+ })
+
  return me
 end --level_done_animation
 
@@ -2514,7 +2550,6 @@ function game_done_animation()
  local me={}
 
  local clk=0
- local msg
 
  function me.update()
   clk+=1
@@ -2524,18 +2559,17 @@ function game_done_animation()
   end
 
   if clk==60 then
-   msg={
+   msg_box.text({
     "score: "..score,
-    "",
     "hiscore: "..hiscore
-   }
+   },true)
   end
 
   return me
  end
 
  function me.draw()
-  message_box(msg)
+  msg_box.draw()
 
   if clk>100 then
    print_await_key("retry")
@@ -2548,14 +2582,16 @@ function game_done_animation()
  maxlevel=max(maxlevel,game.level_num)
  dset(1,maxlevel)
 
+ local msg
  lvl:freeze()
  if game.game_over() then
-  msg={"game over"}
+  msg="game over"
   sfx(2)
  else
-  msg={"end of the line!"}
+  msg="end of the line!"
   sfx(4)
  end
+ msg_box.text({msg})
 
  menuitem(1)
  menuitem(2)
