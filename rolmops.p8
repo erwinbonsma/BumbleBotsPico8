@@ -321,14 +321,12 @@ tiletypes[36]=unpack("0,3,0,false,6,0,0")
 tiletypes[37]=unpack("0,3,0,false,7,0,0")
 
 --global game state
-cartdata("eriban_bumblebots")
-
 clock=0
 game=nil
 lvl=nil
+hiscore=0
 score=0
-hiscore=dget(0)
-maxlevel=max(1,dget(1))
+maxlevel=1
 
 -- class inheritance
 function extend(clz,baseclz)
@@ -492,6 +490,30 @@ function mainscreen_update()
  end
 end
 
+function endscreen_draw()
+ cls()
+
+ color(7)
+ print("hiscore: "..hiscore,
+  0,0)
+ for i=1,#level_defs do
+  local ts=dget(3+i)
+  print(
+   "level "..i..": "..ts..
+   " => "..flr(0.5+ts/30),
+   0,i*6
+  )
+ end
+
+ print_await_key("continue")
+end
+
+function endscreen_update()
+ if btnp(4) then
+  show_mainscreen()
+ end
+end
+
 function show_mainscreen()
  _update=mainscreen_update
  _draw=mainscreen_draw
@@ -508,6 +530,56 @@ function start_game(start_level)
  _update=game.update
  _draw=game.draw
 end
+
+function show_endscreen()
+ _update=endscreen_update
+ _draw=endscreen_draw
+end
+
+function new_cartdata_mgr()
+ local me={}
+ local vmajor=1
+ local vminor=0
+
+ --init
+ cartdata("eriban_bumblebots")
+ if (
+  dget(0)==vmajor and
+  dget(1)>=vminor
+ ) then
+  --read compatible cartdata
+  hiscore=dget(2)
+  maxlevel=dget(3)+1
+ else
+  --reset incompatible data
+  for i=2,#level_defs+2 do
+   dset(i,0)
+  end
+ end
+
+ dset(0,vmajor)
+ dset(1,vminor)
+
+ me.level_done=function(
+  level,time_spent
+ )
+  local old=dget(3+level)
+  if old==0 or time_spent<old then
+   dset(3+level,time_spent)
+  end
+ end
+
+ me.game_done=function()
+  dset(2,hiscore)
+  --minus one so default=1
+  dset(3,maxlevel-1)
+ end
+
+ return me
+end
+
+cartdata_mgr=new_cartdata_mgr()
+
 
 map_unit={}
 
@@ -2084,9 +2156,10 @@ function level:init_map()
    0.10,{a=map_def[5]}
   )
  )
- self.time_left=abs(
+ self.time_initial=abs(
   map_def[6]*30
  )
+ self.time_left=self.time_initial
  self.hard_reset=map_def[6]<0
 
  return map_model
@@ -2237,9 +2310,7 @@ function levelmenu:init_map()
    if l then
     local chk=
      (flr(c/2)+flr(r/2))%2
-    if l<=min(
-     maxlevel,#level_defs
-    ) then
+    if l<=maxlevel then
      unit:settype(288+chk*8)
     else
      unit:settype(290+chk*8)
@@ -2292,9 +2363,11 @@ function new_levelmenu()
   center_print(
    "destination:",9,12
   )
-  center_print(
-   level_defs[idx].name,16,7
-  )
+  local dest="unknown"
+  if idx<=#level_defs then
+   dest=level_defs[idx].name
+  end
+  center_print(dest,16,7)
 
   if msg then
    print(msg,0,110,7)
@@ -2307,7 +2380,12 @@ function new_levelmenu()
   lvl:update()
 
   if btnp(4) then
-   start_game(level_idx()-1)
+   local idx=level_idx()
+   if idx>#level_defs then
+    show_endscreen()
+   else
+    start_game(idx)
+   end
   end
  end
 
@@ -2402,10 +2480,14 @@ function new_game(level_num)
   anim=level_done_animation()
  end
 
+ function init_level()
+  lvl=level:new(me.level_num)
+ end
+
  function me.next_level()
   me.level_num+=1
   if me.level_num<=#level_defs then
-   lvl=level:new(me.level_num)
+   init_level()
    return true
   end
  end
@@ -2424,7 +2506,7 @@ function new_game(level_num)
    anim=game_done_animation()
   end
  )
- me.next_level()
+ init_level()
  anim=level_start_animation()
 
  return me
@@ -2556,6 +2638,11 @@ function level_done_animation()
  )
  lvl:freeze()
 
+ cartdata_mgr.level_done(
+  game.level_num,
+  lvl.time_initial-lvl.time_left
+ )
+
  return me
 end --level_done_animation
 
@@ -2575,11 +2662,19 @@ function game_done_animation()
 
  local msg_box=new_msg_box({msg})
 
+ function next()
+  if game.game_over() then
+   show_mainscreen()
+  else
+   show_endscreen()
+  end
+ end
+
  function me.update()
   clk+=1
 
   if btnp(4) then
-   show_mainscreen()
+   next()
   end
 
   if clk==60 then
@@ -2595,16 +2690,14 @@ function game_done_animation()
  function me.draw()
   msg_box.draw()
 
-  if clk>100 then
-   print_await_key("retry")
+  if clk>180 then
+   next()
   end
  end
 
  hiscore=max(hiscore,score)
- dset(0,hiscore)
-
  maxlevel=max(maxlevel,game.level_num)
- dset(1,maxlevel)
+ cartdata_mgr.game_done()
 
  lvl:freeze()
 
