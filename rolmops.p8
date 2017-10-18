@@ -412,7 +412,6 @@ end
 function draw_3d_title()
  for i=0,25 do
   for j=23,0,-1 do
-   --read pixels of sprite 6
    if band(
     shr(
      --5145=sprite_address(166)+1
@@ -2413,7 +2412,7 @@ function new_game(level_num)
 
  function me.handle_death()
   lives-=1
-  anim=die_animation(death_cause)
+  anim=die_anim(death_cause)
  end
 
  function me.game_over()
@@ -2421,7 +2420,7 @@ function new_game(level_num)
  end
 
  function me.level_done()
-  anim=level_done_animation()
+  anim=level_done_anim()
  end
 
  function init_level()
@@ -2447,16 +2446,16 @@ function new_game(level_num)
  menuitem(
   2,"abort game",function()
    lives=0
-   anim=game_done_animation()
+   anim=game_done_anim()
   end
  )
  init_level()
- anim=level_start_animation()
+ anim=level_start_anim()
 
  return me
 end --new_game()
 
-function die_animation(cause)
+function die_anim(cause)
  local me={}
 
  local clk=0
@@ -2473,10 +2472,10 @@ function die_animation(cause)
 
   if clk==100 then
    if game.game_over() then
-    return game_done_animation()
+    return game_done_anim()
    else
     game.reset()
-    return level_start_animation()
+    return level_start_anim()
    end
   end
 
@@ -2493,9 +2492,9 @@ function die_animation(cause)
  lvl:freeze()
 
  return me
-end --die_animation
+end --die_anim
 
-function level_start_animation()
+function level_start_anim()
  local me={}
 
  local clk=0
@@ -2527,10 +2526,10 @@ function level_start_animation()
  end
 
  return me
-end --level_start_animation
+end --level_start_anim
 
 
-function level_done_animation()
+function level_done_anim()
  local me={}
 
  local clk=0
@@ -2560,9 +2559,9 @@ function level_done_animation()
 
   if clk==120 then
    if game.next_level() then
-    return level_start_animation()
+    return level_start_anim()
    else
-    return game_done_animation()
+    return game_done_anim()
    end
   end
 
@@ -2588,9 +2587,9 @@ function level_done_animation()
  )
 
  return me
-end --level_done_animation
+end --level_done_anim
 
-function game_done_animation()
+function game_done_anim()
  local me={}
 
  local clk=0
@@ -2649,7 +2648,7 @@ function game_done_animation()
  menuitem(2)
 
  return me
-end --game_done_animation
+end --game_done_anim
 
 show_mainscreen()
 
