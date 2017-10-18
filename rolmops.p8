@@ -22,7 +22,6 @@ row_delta[0]=-1
 --  - box={c,r,1-2}
 
 level_defs={
- --level0
  {
   name="going down",
   map_def={24,16,8,8,0,60},
@@ -33,63 +32,40 @@ level_defs={
    {2,7}
   },
   movers={{3,3}}
- },
- --level1
- {
+ },{
   name="ride the waves",
   packed="map_def={0,0,8,8,1,120},objects={{2,2},{9,2},{2,9},{9,9}},movers={{4,7},{8,3}}"
- },
- --level2
- {
+ },{
   name="barsaman",
   packed="map_def={0,8,8,8,1.5,120},objects={{2,2},{6,2},{2,6}},movers={{9,9},{9,2},{2,9}}"
- },
- --level3
- {
+ },{
   name="gutter and stage",
   packed="map_def={8,0,8,8,1,180},objects={{2,2},{9,2},{2,9},{4,4},{8,4},{4,8},{8,8}},movers={{5,9},{5,2},{5,3}}"
- },
- --level4
- {
+ },{
   name="telerium",
   packed="map_def={8,8,8,8,1,120},objects={{5,2},{2,5},{7,5},{5,7},{9,5},{5,9},{2,2,1,6,5},{9,2,2,6,6},{2,9,3,5,5},{9,9,4,5,6}},movers={{7,7},{3,3}}"
- },
- --level5
- {
+ },{
   name="the race",
   packed="map_def={0,0,8,8,1,-35},objects={{2,2},{9,2},{2,9},{9,9},{5,3},{8,5},{6,8},{3,6}},movers={{5,5}}"
- },
- --level6
- {
+ },{
   name="mind the gap",
   packed="map_def={16,0,8,8,1,120},objects={{3,3},{8,3},{3,8},{8,8},{3,4,6},{4,3,6},{4,4,6},{5,3,6}},movers={{6,6},{2,2},{4,6,1},{4,7,1},{6,5,1},{8,5,1}}"
- },
- --level7
- {
+ },{
   name="beam me up",
   packed="map_def={16,8,7,5,1,120},objects={{2,2},{2,3,1,8,2},{4,3,2,6,4},{6,3,3,4,4},{6,2,4,8,3},{4,2,6,1}},movers={{5,6},{5,5,1}}"
- },
- --level8
- {
+ },{
   name="tea party",
   packed="map_def={24,8,8,8,1,-240},objects={{9,2},{9,3,6,10},{9,4,6,10},{8,4,6,10},{9,7,1,9,9}},movers={{2,9},{2,2},{3,2},{2,8,1},{3,8,1},{4,8,1},{5,8,1},{6,8,1},{7,8,1},{8,8,1},{9,8,1}}"
- },
- --level9
- {
+ },{
   name="besieged",
   packed="map_def={24,0,8,8,1,-180},objects={{2,9},{7,9},{3,9,6},{4,9,6},{5,9,6},{6,9,6}},movers={{4,3},{8,7},{9,7},{8,8},{9,8},{8,9},{9,9},{2,5,1},{3,5,1},{4,5,1},{5,5,1},{6,5,1},{7,5,1},{7,4,1},{7,3,1},{7,2,1}}"
- },
- --level10
- {
+ },{
   name="down the river",
   packed="map_def={0,16,8,8,1,-180},objects={{3,2},{9,5},{2,5},{4,6},{6,6},{8,6},{4,8},{6,8},{8,8},{8,2,1,9,2},{2,2,3,2,3},{9,7,4,9,9},},movers={{5,3},{9,4},{3,5},{4,5},{5,5},{2,6},{4,4,1},{6,4,1}}"
- },
- --level11
- {
+ },{
   name="boxing day",
   packed="map_def={8,16,6,6,1,-120},objects={{3,2,6},{4,2,6},{7,4,6},{5,7,6}},movers={{7,2},{2,2,2},{3,4,2},{4,5,2},{6,4,2},{7,7,2},{3,5,1},{3,6,1},{5,3,1},{6,7,1}}"
- },
- {
+ },{
   name="ic trouble",
   packed="map_def={16,16,8,8,1,-180},objects={{4,3},{8,4},{7,8},{3,7},{3,3,1,4,5},{8,3,5,6,4},{3,8,3,5,7},{8,8,4,7,6}},movers={{9,9},{2,2},{9,2},{6,2,2},{2,5,2},{9,6,2},{5,9,2}}",
  },
@@ -114,21 +90,6 @@ level_defs={
    {5,3,1},{3,5,1},{4,5,1},{5,5,1},
    {6,6,1},{3,8,1},{7,8,1},
    {8,4,1},{8,5,1},{8,6,1},{8,7,1}
-  }
- },
- {
-  name="wip2",
-  map_def={0,24,8,8,1,-180},
-  objects={},
-  movers={{2,2},
-   {3,2,2},{5,2,2},{7,2,2},{9,2,2},
-   {3,4,2},{5,4,2},{7,4,2},{9,4,2},
-   {3,6,2},{5,6,2},{7,6,2},{9,6,2},
-   {3,8,2},{5,8,2},{7,8,2},{9,8,2},
-   {2,3,2},{4,3,2},{6,3,2},{8,3,2},
-   {2,5,2},{4,5,2},{6,5,2},{8,5,2},
-   {2,7,2},{4,7,2},{6,7,2},{8,7,2},
-   {2,9,2},{4,9,2},{6,9,2},{8,9,2}
   }
  },
  {
@@ -184,7 +145,7 @@ function unpack(s)
    local valc=sub(val,#val,#val)
    if valc>="0" and valc<="9" then
     val=val*1
-    -- cover for a bug in string conversion
+    --cover for a bug in string conversion
     val=shl(shr(val,1),1)
    elseif val=="true" then
     val=true
@@ -206,16 +167,16 @@ end
 
 --[[
 color maps:
- 1: b&w to dark
- 2: teleport, green
- 3: teleport, blue
- 4: teleport, pink
- 5: teleport, brown
- 6: white to dark-blue
- 7: white to dark-green
- 8: title screen bot
- 9: gap filled by box
-10: b&w to blue
+ 1=b&w to dark
+ 2=teleport, green
+ 3=teleport, blue
+ 4=teleport, pink
+ 5=teleport, brown
+ 6=white to dark-blue
+ 7=white to dark-green
+ 8=title screen bot
+ 9=gap filled by box
+10=b&w to blue
 ]]
 colmaps=unpack("{80,101,118},{131,155},{129,156},{141,158},{132},{113},{115},{206,29,210,86,101},{86,102},{81,109,124}")
 colmaps[0]={} --default
@@ -328,14 +289,14 @@ hiscore=0
 score=0
 maxlevel=1
 
--- class inheritance
+--class inheritance
 function extend(clz,baseclz)
  for k,v in pairs(baseclz) do
   clz[k]=v
  end
 end
 
--- manhattan city distance
+--manhattan city distance
 function distance(unit1,unit2)
  return (
   abs(unit1.col-unit2.col)+
@@ -352,7 +313,7 @@ function timestr(time_in_sec)
  return ""..mn..":"..sub(sc,#sc-1)
 end
 
--- multiple pal() map changes
+--multiple pal() map changes
 function multipal(colmap_idx)
  for v in all(colmaps[colmap_idx]
  ) do
@@ -468,7 +429,7 @@ end
 function mainscreen_draw()
  cls()
 
- -- draw bots
+ --draw bots
  pal(15,5)
  spr(160,0,52,6,6)
  multipal(8)
@@ -619,9 +580,9 @@ function map_unit:setwave(wave)
   self.flex*wave
 end
 
--- adds the mover for drawing
--- purposes. it may not yet
--- have entered the unit
+--add the mover for drawing
+--purposes. it may not yet
+--have entered the unit
 function map_unit:add_mover(mover)
  if mover.draw_unit then
   mover.draw_unit:remove_mover(mover)
@@ -700,9 +661,9 @@ function dirwave:new(angle,o)
 
  o.dx=cos(angle)
  o.dy=sin(angle)
- o.p=o.p or 90 -- period
- o.a=o.a or 1  -- amplitude
- o.w=o.w or 4  -- wavelength
+ o.p=o.p or 90 --period
+ o.a=o.a or 1  --amplitude
+ o.w=o.w or 4  --wavelength
 
  return o
 end
@@ -722,9 +683,9 @@ function shock_wave:new(x0,y0,o)
 
  o.x0=x0
  o.y0=y0
- o.f=o.f or 1/30 -- frequency
- o.a=o.a or 1 -- amplitude
- o.w=o.w or 4 -- wavelength
+ o.f=o.f or 1/30 --frequency
+ o.a=o.a or 1 --amplitude
+ o.w=o.w or 4 --wavelength
  o.clk0=clock
 
  return o
@@ -1011,15 +972,15 @@ function mover:new(o)
  o.mov=0     -- <-mov_max,mov_max]
  o.mov_inc=1 -- -1,1
 
- -- height tolerance
+ --height tolerance
  o.tol=o.tol or 0
 
- -- rotation speed
+ --rotation speed
  o.rot_del=o.rot_del or 2
  o.rot_turn=5*o.rot_del
  o.rot_max=4*o.rot_turn
 
- -- move speed
+ --move speed
  o.mov_del=o.mov_del or 2
  o.mov_max=8*o.mov_del
 
@@ -1092,7 +1053,7 @@ end
 function mover:update_height()
  local height=self.unit.height
 
- -- adapt height if needed
+ --adapt height if needed
  if self.unit2 then
   --on two tiles, follow highest
   height=max(height,self.unit2.height)
@@ -1132,7 +1093,7 @@ function mover:turn_step()
  self.rot+=self.rot_dir+self.rot_max
  self.rot%=self.rot_max
  if self.rot%(5*self.rot_del)==0 then
-  -- finished turn
+  --finished turn
   self.rot_dir=0
  end
 end
@@ -1145,38 +1106,28 @@ function mover:move_step()
   self.mov_max
  )%self.mov_max
 
- --msg=
- -- "mov="..self.mov..
- -- ", inc="..self.mov_inc..
- -- ", rmov="..relmov
- --debug(msg)
-
  if relmov==2*self.mov_del then
-  -- about to enter next unit
+  --about to enter next unit
   local to_unit=self.unit:neighbour(
    self:move_heading()
   )
   if self:can_enter(to_unit) then
-   -- entered destination unit
-   --debug("entering: "..msg)
+   --entered destination unit
    self:entering_unit(to_unit)
   else
-   -- cannot move, retreat
+   --cannot move, retreat
    self.mov_inc=-self.mov_inc
    self.mov+=self.mov_inc
    self:bump()
   end
  elseif relmov==4*self.mov_del then
-  -- halfway crossing
-  --debug("swap: "..msg)
+  --halfway crossing
   self:swap_unit()
  elseif relmov==6*self.mov_del+1 then
-  -- exited source unit
-  --debug("exited: "..msg)
+  --exited source unit
   self:exited_unit()
  elseif relmov==0 then
-  -- done
-  --debug("move done: "..msg)
+  --done
   self.mov_dir=0
   self.mov_inc=1
  end
@@ -1232,7 +1183,6 @@ function mover:can_enter(unit)
 end
 
 function mover:entering_unit(to_unit)
- --msg="entering:"..self.unit:tostring().."-"..to_unit:tostring()
  self.unit2=to_unit
 
  self.falling=is_fall(
@@ -1249,14 +1199,12 @@ function mover:entering_unit(to_unit)
 end
 
 function mover:swap_unit()
- --msg="enter:"..self.unit:tostring().."-"..self.unit2:tostring()
  local unit=self.unit2
  self.unit2=self.unit
  self.unit=unit
 end
 
 function mover:exited_unit()
- --msg="exited_unit"
  if (self.draw_unit!=self.unit) then
   self.unit:add_mover(self)
   self.mov-=self.mov_max*sign(self.mov)
@@ -1347,14 +1295,14 @@ function player:can_enter(unit)
  local box=unit:box()
  return (
   (
-   -- no box
+   --no box
    not box or
-   -- will drop on box
+   --will drop on box
    is_fall(
     self.unit.height,
     unit.height
    ) or
-   -- can push box
+   --can push box
    box:can_enter(
     unit:neighbour(
      self:move_heading()
@@ -1410,10 +1358,6 @@ function player:update()
   desired_mov_dir
  ) then
   self.mov_inc=-self.mov_inc
-  --msg=
-  -- "mov="..self.mov..
-  -- ", inc="..self.mov_inc
-  --debug("toggled dir: "..msg)
   if self.swapped then
    --undo swap
    self:swap_unit()
