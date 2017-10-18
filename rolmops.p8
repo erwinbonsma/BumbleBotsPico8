@@ -157,6 +157,16 @@ function unpack(s)
  return a
 end
 
+function level_def(idx)
+ local def=level_defs[idx]
+
+ if not def.unpacked then
+  def.unpacked=unpack(def.packed)
+ end
+
+ return def.unpacked
+end
+
 --[[
 color maps:
  1=b&w to dark
@@ -169,8 +179,9 @@ color maps:
  8=title screen bot
  9=gap filled by box
 10=b&w to blue
+11=end screen bot
 ]]
-colmaps=unpack("{80,101,118},{131,155},{129,156},{141,158},{132},{113},{115},{206,29,210,86,101},{86,102},{81,109,124}")
+colmaps=unpack("{80,101,118},{131,155},{129,156},{141,158},{132},{113},{115},{206,29,210,86,101},{86,102},{81,109,124},{245,168,138}")
 colmaps[0]={} --default
 
 --fields
@@ -296,6 +307,15 @@ function distance(unit1,unit2)
  )
 end
 
+--right align a number
+function lpad(val,len)
+ local s=""..val
+ while #s<len do
+  s=" "..s
+ end
+ return s
+end
+
 function timestr(time_in_sec)
  if time_in_sec<0 then
   return "0:00"
@@ -337,11 +357,44 @@ function debug(msg)
  printh(msg,"debug.txt")
 end
 
-function new_msg_box(_msgs)
+--the score that would have been
+--reached if the best score for
+--each level was reached in the
+--same game.
+function virtual_hiscore()
+ local vscore=0
+ for i=1,#level_defs do
+  local ts=dget(3+i)
+  local ld=level_def(i)
+  local vlscore=(
+   abs(ld.map_def[6])-flr(ts/30)
+  )
+  for odef in all(ld.objects) do
+   if not odef[3] then
+    vlscore+=10
+   end
+  end
+  for mdef in all(ld.movers) do
+   if mdef[3]==2 then
+    vlscore+=10
+   end
+  end
+  vscore+=vlscore
+ end
+ return vscore
+end
+
+function new_msg_box(
+ _msgs,_x0,_y0,_x1,_y1
+)
  local me={}
 
  local msgs=_msgs
  local cursor_idx=0
+ local x0=_x0 or 30
+ local y0=_y0 or 38
+ local x1=_x1 or 98
+ local y1=_y1 or 90
 
  me.append=function(
   new_msgs
@@ -354,12 +407,12 @@ function new_msg_box(_msgs)
  end
 
  me.draw=function()
-  rect(30,38,98,90,5)
-  rect(30,38,97,89,7)
-  rect(31,39,97,89,6)
-  rectfill(32,40,96,88,0)
+  rectfill(x0,y0,x1,y1,0)
+  rect(x0,y0,x1,y1,5)
+  rect(x0,y0,x1-1,y1-1,7)
+  rect(x0+1,y0+1,x1-1,y1-1,6)
 
-  local y=41
+  local y=y0+3
   local rem_chars=flr(
    cursor_idx/2
   )+1
@@ -367,7 +420,7 @@ function new_msg_box(_msgs)
    if rem_chars>0 then
     local l=min(#msg,rem_chars)
     print(
-     sub(msg,1,l),33,y,11
+     sub(msg,1,l),x0+3,y,11
     )
     rem_chars-=l
     if rem_chars==0 then
@@ -375,13 +428,15 @@ function new_msg_box(_msgs)
      if (
       cursor_idx%2 and l<16
      ) then
-      print("_",33+l*4,y,11)
+      print("_",x0+3+l*4,y,11)
      end
      l=rem_chars
     end
     y+=6
    end
   end
+
+  return rem_chars>0
  end
 
  return me
@@ -442,29 +497,52 @@ function mainscreen_update()
  end
 end
 
-function endscreen_draw()
- cls()
+function new_endscreen()
+ local me={}
+ local msgs={
+  "well done, little bot!",
+  "you reached the end",
+  "",
+  "  score           :"
+    ..lpad(score,6),
+  "  hi-score        :"
+    ..lpad(hiscore,6),
+  "  virtual hi-score:"
+    ..lpad(virtual_hiscore(),6),
+  "",
+  "what now?",
+  "         ",
+  "try again maybe?",
+  "                ",
+  "you can do better, right?"
+ }
 
- color(7)
- print("hiscore: "..hiscore,
-  0,0)
- for i=1,#level_defs do
-  local ts=dget(3+i)
-  print(
-   "level "..i..": "..ts..
-   " => "..flr(0.5+ts/30),
-   0,i*6
-  )
+ local msg_box=new_msg_box(
+  msgs,12,0,116,76
+ )
+
+ me.draw=function()
+  cls()
+
+  color(7)
+  if msg_box.draw() then
+   print_await_key("continue")
+  end
+
+  --draw bot
+  multipal(11)
+  spr(160,0,70,6,6,true)
+  pal()
  end
 
- print_await_key("continue")
-end
-
-function endscreen_update()
- if btnp(4) then
-  show_mainscreen()
+ me.update=function()
+  if btnp(4) then
+   show_mainscreen()
+  end
  end
-end
+
+ return me
+end --new_endscreen()
 
 function show_mainscreen()
  _update=mainscreen_update
@@ -484,8 +562,9 @@ function start_game(start_level)
 end
 
 function show_endscreen()
- _update=endscreen_update
- _draw=endscreen_draw
+ local es=new_endscreen()
+ _update=es.update
+ _draw=es.draw
 end
 
 function new_cartdata_mgr()
@@ -2058,11 +2137,7 @@ extend(level,baselevel)
 function level:new(idx,o)
  o=o or {}
  o.idx=idx
- o.def=level_defs[idx]
-
- if o.def.packed then
-  o.def=unpack(o.def.packed)
- end
+ o.def=level_def(idx)
 
  baselevel.new(self,o)
  local o=setmetatable(o,self)
