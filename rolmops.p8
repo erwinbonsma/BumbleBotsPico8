@@ -364,22 +364,7 @@ end
 function virtual_hiscore()
  local vscore=0
  for i=1,#level_defs do
-  local ts=dget(3+i)
-  local ld=level_def(i)
-  local vlscore=(
-   abs(ld.map_def[6])-flr(ts/30)
-  )
-  for odef in all(ld.objects) do
-   if not odef[3] then
-    vlscore+=10
-   end
-  end
-  for mdef in all(ld.movers) do
-   if mdef[3]==2 then
-    vlscore+=10
-   end
-  end
-  vscore+=vlscore
+  vscore+=dget(3+i)
  end
  return vscore
 end
@@ -509,13 +494,29 @@ function new_endscreen()
     ..lpad(hiscore,6),
   "  virtual hi-score:"
     ..lpad(virtual_hiscore(),6),
-  "",
-  "what now?",
-  "         ",
-  "try again maybe?",
-  "                ",
-  "you can do better, right?"
+--  "",
+--  "what now?",
+--  "         ",
+--  "try again maybe?",
+--  "                ",
+--  "you can do better, right?"
  }
+
+ local msg
+ for i=1,#level_defs do
+  if not msg then
+   msg=""..dget(i+3)
+  else
+   msg=msg..","..dget(i+3)
+  end
+  if #msg>20 then
+   add(msgs,msg)
+   msg=nil
+  end
+ end
+ if msg then
+  add(msgs,msg)
+ end
 
  local msg_box=new_msg_box(
   msgs,12,0,116,76
@@ -569,7 +570,7 @@ end
 
 function new_cartdata_mgr()
  local me={}
- local vmajor=1
+ local vmajor=2
  local vminor=0
 
  --init
@@ -592,11 +593,11 @@ function new_cartdata_mgr()
  dset(1,vminor)
 
  me.level_done=function(
-  level,time_spent
+  level,level_score
  )
   local old=dget(3+level)
-  if old==0 or time_spent<old then
-   dset(3+level,time_spent)
+  if level_score>old then
+   dset(3+level,level_score)
   end
  end
 
@@ -615,8 +616,7 @@ cartdata_mgr=new_cartdata_mgr()
 map_unit={}
 
 function map_unit:new(_mapmodel,o)
- o=o or {}
- o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.mapmodel=_mapmodel
@@ -725,8 +725,7 @@ end
 
 dirwave={}
 function dirwave:new(angle,o)
- o=o or {}
- o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.dx=cos(angle)
@@ -747,8 +746,7 @@ end
 
 shock_wave={}
 function shock_wave:new(x0,y0,o)
- o=o or {}
- o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.x0=x0
@@ -1031,8 +1029,7 @@ end
 mover={}
 
 function mover:new(o)
- o=o or {}
- local o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.rot=0     -- [0..rot_max>
@@ -1474,8 +1471,8 @@ extend(enemy,bot)
 function enemy:new(target,o)
  o=o or {}
  o.rot_del=o.rot_del or 3
- o=bot.new(self,o)
- local o=setmetatable(o,self)
+ bot.new(self,o)
+ setmetatable(o,self)
  self.__index=self
  
  o.target=target
@@ -1646,8 +1643,8 @@ extend(box,mover)
 
 function box:new(box_type,o)
  o=o or {}
- o=mover.new(self,o)
- local o=setmetatable(o,self)
+ mover.new(self,o)
+ setmetatable(o,self)
  self.__index=self
 
  o.box_type=box_type
@@ -1770,8 +1767,7 @@ end
 pickup={}
 
 function pickup:new(o)
- o=o or {}
- local o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.is_pickup=true
@@ -1794,8 +1790,7 @@ teleport={}
 function teleport:new(
  colmap_idx,dst_pos,o
 )
- o=o or {}
- local o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.dst_pos=dst_pos
@@ -1878,8 +1873,7 @@ end
 gap={}
 
 function gap:new(colmap_idx,o)
- o=o or {}
- local o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.is_gap=true
@@ -1968,8 +1962,7 @@ end
 baselevel={}
 
 function baselevel:new(o)
- o=o or {}
- local o=setmetatable(o,self)
+ o=setmetatable(o or {},self)
  self.__index=self
 
  o.collected_pickups={}
@@ -2140,8 +2133,10 @@ function level:new(idx,o)
  o.def=level_def(idx)
 
  baselevel.new(self,o)
- local o=setmetatable(o,self)
+ setmetatable(o,self)
  self.__index=self
+
+ o.initial_score=score
 
  for object_specs in all(o.def.objects) do
   o:add_object_from_specs(
@@ -2166,10 +2161,9 @@ function level:init_map()
    0.10,{a=map_def[5]}
   )
  )
- self.time_initial=abs(
+ self.time_left=abs(
   map_def[6]*30
  )
- self.time_left=self.time_initial
  self.hard_reset=map_def[6]<0
 
  return map_model
@@ -2617,11 +2611,13 @@ function level_done_anim()
     score+=1
     sfx(8)
     clk=59
+   else
+    cartdata_mgr.level_done(
+     game.level_num,
+     score-lvl.initial_score
+    )
+    msg_box.append({"bumble on!"})
    end
-  end
-
-  if clk==60 then
-   msg_box.append({"bumble on!"})
   end
 
   if clk==120 then
@@ -2647,11 +2643,6 @@ function level_done_anim()
   shock_wave:new(pu.col,pu.row)
  )
  lvl:freeze()
-
- cartdata_mgr.level_done(
-  game.level_num,
-  lvl.time_initial-lvl.time_left
- )
 
  return me
 end --level_done_anim
@@ -2717,7 +2708,8 @@ function game_done_anim()
  return me
 end --game_done_anim
 
-show_mainscreen()
+--show_mainscreen()
+show_endscreen()
 
 --eof
 __gfx__
