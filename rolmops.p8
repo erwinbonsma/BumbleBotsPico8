@@ -488,20 +488,21 @@ function new_endscreen()
   "well done, little bot!",
   "you reached the end",
   "",
-  "  score           :"
+  " score           :"
     ..lpad(score,6),
-  "  hi-score        :"
+  " hi-score        :"
     ..lpad(hiscore,6),
-  "  virtual hi-score:"
+  " virtual hi-score:"
     ..lpad(virtual_hiscore(),6),
---  "",
---  "what now?",
---  "         ",
---  "try again maybe?",
---  "                ",
---  "you can do better, right?"
+  "",
+  "what now?",
+  "         ",
+  "try again maybe?",
+  "                ",
+  "you can do better, right?"
  }
 
+ --[[
  local msg
  for i=1,#level_defs do
   if not msg then
@@ -517,10 +518,41 @@ function new_endscreen()
  if msg then
   add(msgs,msg)
  end
+ ]]
 
  local msg_box=new_msg_box(
   msgs,12,0,116,76
  )
+
+ function watermark(x0,y0,w,h)
+  local x=0
+  local y=0
+  for i=1,#level_defs do
+   local s=flr(dget(3+i))
+   for j=1,10 do
+    --find next pixel to patch
+    while y<h do
+     local val=pget(x0+x,y0+y)
+     if val==10 then
+      break
+     end
+     --pset(x0+x,y0+y,15)
+     x+=1
+     if x>w then
+      x=0
+      y+=1
+     end
+    end
+    if y<h then
+     pset(
+      x0+x,y0+y,9+band(s,1)
+     )
+    end
+    s=shr(s,1)
+    x+=1
+   end
+  end
+ end
 
  me.draw=function()
   cls()
@@ -528,6 +560,7 @@ function new_endscreen()
   color(7)
   if msg_box.draw() then
    print_await_key("continue")
+   watermark(26,120,78,6)
   end
 
   --draw bot
@@ -2680,8 +2713,8 @@ function game_done_anim()
 
   if clk==60 then
    msg_box.append({
-    "score: "..score,
-    "hiscore: "..hiscore
+    "score   :"..lpad(score,5),
+    "hi-score:"..lpad(hiscore,5)
    })
   end
 
