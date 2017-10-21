@@ -435,9 +435,37 @@ function center_print(
  )
 end
 
+function watermark(x0,y0,x1,y1)
+ local a=0x5e12
+ local v
+ local sh=9
+ for x=x0,x1 do
+  for y=y0,y1 do
+   if pget(x,y)==10 then
+    --only take 10 bits
+    if sh==9 then
+     v=shl(peek(a+1),8)+peek(a)
+     --debug(""..a..": "..v)
+     --jump to next int val
+     a+=4
+     sh=0
+    else
+     v=shr(v,1)
+     sh+=1
+    end
+
+    pset(x,y,9+band(v,1))
+   end
+  end
+ end
+end
+
 function print_await_key(action)
- center_print(
-  "press Ž to "..action,120,10
+ local s="press Ž to "..action
+ local x0=62-#s*2
+ print(s,x0,120,10)
+ watermark(
+  x0,120,x0+#s*4+3,124
  )
 end
 
@@ -524,43 +552,12 @@ function new_endscreen()
   msgs,12,0,116,76
  )
 
- function watermark(x0,y0,w,h)
-  local x=0
-  local y=0
-  for i=1,#level_defs do
-   local s=flr(dget(3+i))
-   for j=1,10 do
-    --find next pixel to patch
-    while y<h do
-     local val=pget(x0+x,y0+y)
-     if val==10 then
-      break
-     end
-     --pset(x0+x,y0+y,15)
-     x+=1
-     if x>w then
-      x=0
-      y+=1
-     end
-    end
-    if y<h then
-     pset(
-      x0+x,y0+y,9+band(s,1)
-     )
-    end
-    s=shr(s,1)
-    x+=1
-   end
-  end
- end
-
  me.draw=function()
   cls()
 
   color(7)
   if msg_box.draw() then
    print_await_key("continue")
-   watermark(26,120,78,6)
   end
 
   --draw bot
@@ -2713,8 +2710,8 @@ function game_done_anim()
 
   if clk==60 then
    msg_box.append({
-    "score   :"..lpad(score,5),
-    "hi-score:"..lpad(hiscore,5)
+    " score   :"..lpad(score,5),
+    " hi-score:"..lpad(hiscore,5)
    })
   end
 
@@ -2741,8 +2738,7 @@ function game_done_anim()
  return me
 end --game_done_anim
 
---show_mainscreen()
-show_endscreen()
+show_mainscreen()
 
 --eof
 __gfx__
