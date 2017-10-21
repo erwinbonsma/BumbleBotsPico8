@@ -631,6 +631,7 @@ function new_cartdata_mgr()
   local old=dget(3+level)
   if level_score>old then
    dset(3+level,level_score)
+   return true --signal new hi
   end
  end
 
@@ -2648,7 +2649,7 @@ function level_done_anim()
 
  local clk=0
  local msg_box=new_msg_box({
-  "level done"
+  "level completed!"
  })
 
  function me.update()
@@ -2665,11 +2666,19 @@ function level_done_anim()
     sfx(8)
     clk=59
    else
-    cartdata_mgr.level_done(
+    local newhi=cartdata_mgr.level_done(
      game.level_num,
      score-lvl.initial_score
     )
-    msg_box.append({"bumble on!"})
+    local msg
+    if lvl.idx>=maxlevel then
+     msg="unlocked next"
+    elseif newhi then
+     msg="new level hi!"
+    else
+     msg="bumble on!"
+    end
+    msg_box.append({msg})
    end
   end
 
