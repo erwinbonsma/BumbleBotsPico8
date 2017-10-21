@@ -1817,9 +1817,14 @@ function pickup:draw(x,y)
 end
 
 function pickup:visit(mover)
- self.unit:remove_object(self)
- lvl:pickup_collected(self)
- sfx(3)
+ if not mover.frozen then
+  --do not let frozen mover
+  --collect pickup. player may
+  --already have died...
+  self.unit:remove_object(self)
+  lvl:pickup_collected(self)
+  sfx(3)
+ end
 end
 
 teleport={}
@@ -2292,6 +2297,8 @@ function level:freeze()
 end
 
 function level:update()
+ baselevel.update(self)
+
  if self.playing then
   self.time_left-=1
 
@@ -2301,8 +2308,6 @@ function level:update()
    )
   end
  end
-
- baselevel.update(self)
 end
 
 function level:draw()
