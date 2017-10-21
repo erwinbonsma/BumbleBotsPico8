@@ -1454,6 +1454,7 @@ function player:update()
  elseif (
   self:moving() and
   desired_mov_dir!=0 and
+  not self:is_dazed() and
   self.mov_dir*self.mov_inc!=
   desired_mov_dir
  ) then
