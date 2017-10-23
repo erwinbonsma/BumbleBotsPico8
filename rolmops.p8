@@ -439,7 +439,7 @@ function center_print(
 end
 
 function watermark(x0,y0,x1,y1)
- local a=0x5e12
+ local a=0x5e16
  local v
  local sh=9
  for x=x0,x1 do
@@ -513,24 +513,24 @@ function mainscreen_update()
  end
 end
 
-function new_endscreen()
+function new_endscreen(run_len)
  local me={}
  local msgs={
-  "well done, little bot!",
-  "you reached the end",
+  "   +-----------------+",
+  "   | end of the line |",
+  "   +-----------------+",
   "",
-  " score           :"
-    ..lpad(score,6),
-  " hi-score        :"
-    ..lpad(hiscore,6),
-  " virtual hi-score:"
-    ..lpad(virtual_hiscore(),6),
+  " score"
+    ..lpad(score,18),
+  " hi-score"
+    ..lpad(hiscore,15),
+  " virtual hi-score"
+    ..lpad(virtual_hiscore(),7),
   "",
-  "what now?",
-  "         ",
-  "try again maybe?",
-  "                ",
-  "you can do better, right?"
+  " run length"
+    ..lpad(run_len,8).." lvls",
+  " max run length"
+    ..lpad(dget(4),4).." lvls"
  }
 
  --[[
@@ -552,8 +552,9 @@ function new_endscreen()
  ]]
 
  local msg_box=new_msg_box(
-  msgs,12,0,116,76
+  msgs,12,4,116,74
  )
+ local cnt=0
 
  me.draw=function()
   cls()
@@ -572,6 +573,10 @@ function new_endscreen()
  me.update=function()
   if btnp(4) then
    show_mainscreen()
+  end
+  cnt+=1
+  if cnt==55 then
+   sfx(4)
   end
  end
 
@@ -595,12 +600,21 @@ function start_game(start_level)
  _draw=game.draw
 end
 
-function show_endscreen()
- local es=new_endscreen()
+function show_endscreen(levelrun)
+ local es=new_endscreen(levelrun)
  _update=es.update
  _draw=es.draw
 end
 
+--[[
+0:vminor
+1:vmajor
+2:hiscore
+3:maxlevel
+4:max_levelrun
+5:score_level 1
+20:score_level 16
+]]
 function new_cartdata_mgr()
  local me={}
  local vmajor=1
@@ -617,7 +631,7 @@ function new_cartdata_mgr()
   maxlevel=dget(3)+1
  else
   --reset incompatible data
-  for i=2,#level_defs+2 do
+  for i=2,20 do
    dset(i,0)
   end
  end
@@ -628,17 +642,19 @@ function new_cartdata_mgr()
  me.level_done=function(
   level,level_score
  )
-  local old=dget(3+level)
+  --update level high
+  local old=dget(4+level)
   if level_score>old then
-   dset(3+level,level_score)
+   dset(4+level,level_score)
    return true --signal new hi
   end
  end
 
- me.game_done=function()
+ me.game_done=function(levelrun)
   dset(2,hiscore)
   --minus one so default=1
   dset(3,maxlevel-1)
+  dset(4,max(dget(4),levelrun))
  end
 
  return me
@@ -1819,10 +1835,10 @@ function pickup:draw(x,y)
 end
 
 function pickup:visit(mover)
+ --do not let frozen mover
+ --collect pickup. player may
+ --already have died...
  if not mover.frozen then
-  --do not let frozen mover
-  --collect pickup. player may
-  --already have died...
   self.unit:remove_object(self)
   lvl:pickup_collected(self)
   sfx(3)
@@ -2438,9 +2454,7 @@ function new_levelmenu()
 
   if btnp(4) then
    local idx=level_idx()
-   if idx>#level_defs then
-    show_endscreen()
-   else
+   if idx<=#level_defs then
     start_game(idx)
    end
   end
@@ -2460,6 +2474,7 @@ function new_game(level_num)
  local lives=3
  local death_cause
 
+ me.start_level=level_num
  me.level_num=level_num
  score=0
 
@@ -2533,6 +2548,10 @@ function new_game(level_num)
   return lives==0
  end
 
+ function me.level_run()
+  return me.level_num-me.start_level
+ end
+
  function me.level_done()
   anim=level_done_anim()
  end
@@ -2560,8 +2579,8 @@ function new_game(level_num)
  )
  menuitem(
   2,"abort game",function()
-   lives=0
-   anim=game_done_anim()
+   game_done()
+   anim=game_over_anim()
   end
  )
  init_level()
@@ -2587,7 +2606,8 @@ function die_anim(cause)
 
   if clk==100 then
    if game.game_over() then
-    return game_done_anim()
+    game_done()
+    return game_over_anim()
    else
     game.reset()
     return level_start_anim()
@@ -2686,7 +2706,9 @@ function level_done_anim()
    if game.next_level() then
     return level_start_anim()
    else
-    return game_done_anim()
+    game_done()
+    show_endscreen(game.level_run())
+    return nil
    end
   end
 
@@ -2709,35 +2731,31 @@ function level_done_anim()
  return me
 end --level_done_anim
 
-function game_done_anim()
+function game_done()
+ hiscore=max(hiscore,score)
+ maxlevel=max(maxlevel,game.level_num)
+ cartdata_mgr.game_done(game.level_run())
+
+ menuitem(1)
+ menuitem(2)
+end
+
+function game_over_anim()
  local me={}
 
  local clk=0
  local msg
 
- if game.game_over() then
-  msg="game over"
-  sfx(2)
- else
-  msg="end of the line!"
-  sfx(4)
- end
-
- local msg_box=new_msg_box({msg})
-
- function next()
-  if game.game_over() then
-   show_mainscreen()
-  else
-   show_endscreen()
-  end
- end
+ local msg_box=new_msg_box({
+  "",
+  "   game over"
+ })
 
  function me.update()
   clk+=1
 
   if btnp(4) then
-   next()
+   show_mainscreen()
   end
 
   if clk==60 then
@@ -2753,24 +2771,19 @@ function game_done_anim()
  function me.draw()
   msg_box.draw()
 
-  if clk>180 then
-   next()
+  if clk>240 then
+   show_mainscreen()
   end
  end
 
- hiscore=max(hiscore,score)
- maxlevel=max(maxlevel,game.level_num)
- cartdata_mgr.game_done()
-
  lvl:freeze()
-
- menuitem(1)
- menuitem(2)
+ sfx(2)
 
  return me
-end --game_done_anim
+end --game_over_anim
 
-show_mainscreen()
+--show_mainscreen()
+show_endscreen(0)
 
 --eof
 __gfx__
