@@ -354,7 +354,7 @@ end
 function virtual_hiscore()
  local vscore=0
  for i=1,#level_defs do
-  vscore+=dget(3+i)
+  vscore+=dget(4+i)
  end
  return vscore
 end
