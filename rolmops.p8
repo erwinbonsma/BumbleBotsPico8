@@ -449,8 +449,14 @@ function watermark(x0,y0,x1,y1)
  end
 end
 
-function print_await_key(action)
- local s="press Ž to "..action
+function print_await_key(
+ action,key_hint
+)
+ local key="Ž"
+ if key_hint then
+  key=key.." (the z key)"
+ end
+ local s="press "..key.." to "..action
  local x0=62-#s*2
  print(s,x0,120,10)
  watermark(
@@ -493,10 +499,11 @@ function mainscreen_draw()
  print("music: paul bonsma",0,100,1)
  print("the rest: erwin bonsma",0,106,1)
 
- print_await_key("start")
+ print_await_key("start",clock>300)
 end
 
 function mainscreen_update()
+ clock+=1
  if btnp(4) then
   show_levelmenu()
  end
@@ -573,6 +580,7 @@ function new_endscreen(run_len)
 end --new_endscreen()
 
 function show_mainscreen()
+ clock=0
  _update=mainscreen_update
  _draw=mainscreen_draw
 end
