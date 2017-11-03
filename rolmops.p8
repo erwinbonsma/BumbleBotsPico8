@@ -463,7 +463,7 @@ function draw_3d_title()
     ),
     15
    )==7 then
-    spr(198,22+i*4,20+j*2+i*2)
+    spr(198,22+i*4,16+j*2+i*2)
    end
   end
  end
@@ -474,16 +474,19 @@ function mainscreen_draw()
 
  --draw bots
  multipal(12)
- spr(160,0,52,6,6)
+ spr(160,0,48,6,6)
  multipal(8)
- spr(160,80,8,6,6,true)
+ spr(160,80,4,6,6,true)
  pal()
 
  draw_3d_title()
 
- print("eriban presents",33,0,4)
- print("wip",116,100,4)
- print(version,116,106,4)
+ print("eriban presents",33,0,2)
+ print("wip",116,94,4)
+ print(version,116,100,4)
+
+ print("music: paul bonsma",0,100,1)
+ print("the rest: erwin bonsma",0,106,1)
 
  print_await_key("start")
 end
