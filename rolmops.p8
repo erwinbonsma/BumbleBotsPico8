@@ -1179,7 +1179,7 @@ function mover:update_dx_dy()
   )*self.mov_dir
   self.dy=flr(
    (col_delta[h]+row_delta[h])
-   *self.mov/self.mov_del/2+0.5
+   *self.mov/self.mov_del/2
   )*self.mov_dir
  else
   self.dx=0
