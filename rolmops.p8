@@ -2682,7 +2682,7 @@ function level_start_anim()
    })
   end
 
-  if clk==140 then
+  if clk==140 or btnp(4) then
    lvl:start()
    return nil
   end
