@@ -2817,8 +2817,6 @@ function game_over_anim()
 end --game_over_anim
 
 show_mainscreen()
-debug(sprite_address(138))
-
 --show_endscreen(0)
 
 --eof
