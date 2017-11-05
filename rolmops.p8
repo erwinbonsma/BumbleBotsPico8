@@ -29,11 +29,11 @@ level_defs={{
   name="ride the waves",
   packed="map_def={0,0,8,8,1,120},objects={{2,2},{9,2},{2,9},{9,9}},movers={{4,7},{8,3}}"
  },{
-  name="barsaman",
-  packed="map_def={0,8,8,8,1.5,120},objects={{2,2},{6,2},{2,6}},movers={{9,9},{9,2},{2,9}}"
- },{
   name="gutter and stage",
   packed="map_def={8,0,8,8,1,180},objects={{2,2},{9,2},{2,9},{4,4},{8,4},{4,8},{8,8}},movers={{5,9},{5,2},{5,3}}"
+ },{
+  name="barsaman",
+  packed="map_def={0,8,8,8,1.5,120},objects={{2,2},{6,2},{2,6}},movers={{9,9},{9,2},{2,9}}"
  },{
   name="telerium",
   packed="map_def={8,8,8,8,1,120},objects={{5,2},{2,5},{7,5},{5,7},{9,5},{5,9},{2,2,1,6,5},{9,2,2,6,6},{2,9,3,5,5},{9,9,4,5,6}},movers={{7,7},{3,3}}"
@@ -59,7 +59,7 @@ level_defs={{
   name="boxing day",
   packed="map_def={8,16,6,6,1,-120},objects={{3,2,6},{4,2,6},{7,4,6},{5,7,6},{3,7,6}},movers={{6,3},{2,2,2},{3,4,2},{4,4,2},{6,4,2},{2,7,2},{7,2,2},{7,7,2},{3,5,1},{3,6,1},{5,4,1},{4,7,1},{6,7,1}}"
  },{
-  name="ic trouble",
+  name="enter the machine",
   packed="map_def={16,16,8,8,1,-180},objects={{4,3},{8,4},{7,8},{3,7},{3,3,1,4,5},{8,3,5,6,4},{3,8,3,5,7},{8,8,4,7,6}},movers={{9,9},{2,2},{9,2},{6,2,2},{2,5,2},{9,6,2},{5,9,2}}",
  },{
   name="seasick",
@@ -366,9 +366,26 @@ function new_msg_box(
  local msgs=_msgs
  local cursor_idx=0
  local x0=_x0 or 30
- local y0=_y0 or 38
+ local y0=_y0 or 41
  local x1=_x1 or 98
- local y1=_y1 or 90
+ local y1=_y1 or 87
+ local line_len=(x1-x0-4)/4
+
+ local wrap_pos=function(msg)
+  local p=#msg
+  if p>line_len then
+   --wrap line
+   p=line_len
+   --wrap at space if possible
+   while sub(msg,p,p)!=" " and p>0 do
+    p-=1
+   end
+   if p==0 then
+    p=line_len
+   end
+  end
+  return p
+ end
 
  me.append=function(
   new_msgs
@@ -391,8 +408,13 @@ function new_msg_box(
    cursor_idx/2
   )+1
   for msg in all(msgs) do
-   if rem_chars>0 then
-    local l=min(#msg,rem_chars)
+   if msg=="" then
+    msg=" "
+   end
+   while rem_chars>0 and #msg>0 do
+    local l=min(
+     wrap_pos(msg),rem_chars
+    )
     print(
      sub(msg,1,l),x0+3,y,11
     )
@@ -400,11 +422,13 @@ function new_msg_box(
     if rem_chars==0 then
      cursor_idx+=1
      if (
-      cursor_idx%2 and l<16
+      cursor_idx%2 and l<line_len
      ) then
       print("_",x0+3+l*4,y,11)
      end
      l=rem_chars
+    else
+     msg=sub(msg,l+1)
     end
     y+=6
    end
@@ -2938,8 +2962,8 @@ ddd881110dd8111101d1d1d0dddda110dddaa111dddaa1110dda11110d1d1d10dddda110dddaa111
 000665fffffeeddddddddd11111111177775555555000000dddccca9cccc11115666666605555555885111886666666677777777644445668088808080808088
 000000fffffeeedddddddd11111117777555555550000000dddddccccc1111116666666655555555885111886666666677777777644445668080808080800088
 000000ffefffeedddd7ddd11111777755555555000000000dddddddc111111115666666605555555885111886666666677777777644445668080808080800888
-000000ffeeffeedddd677d11177775555555500000000000dddddddd111111116656666655555505776611886666666677777777644005668800088000808088
-0000000ffeffeedddd677777777555555550000000000000dddddddd111111115666566605550555777766886666666677777777600445668888888888888888
+000000ffeeffeedddd677d11177775555555500000000000dddddddd111111116656666655555505776611886666666677777777644995668800088000808088
+0000000ffeffeedddd677777777555555550000000000000dddddddd111111115666566605550555777766886666666677777777699445668888888888888888
 0000000fffffeedddd666777755555555000000000000000dddddddd111111116666665655055555777777886666666677777777644445668888888888888888
 00000000ffffee000d666665555555500000000000000000dddddddd111111115666666605555555777777776666666677777777644445668088080808088888
 00000000fffee00000666665555550000000000000000000dddddddd1111111166666666555555557777777766666666777777776444d5668080880808088888
