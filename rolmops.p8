@@ -4,7 +4,7 @@ __lua__
 -- bumble bots
 -- (c) 2017, erwin bonsma
 
-version="0.7"
+version="0.8"
 
 col_delta={1,0,-1}
 row_delta={0,1,0}
