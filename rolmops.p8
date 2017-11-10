@@ -70,6 +70,7 @@ level_defs={{
  },{
   name="warehouse",
   packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2},{3,2},{9,2},{9,3},{8,9},{9,9},{5,5,1},{5,6,1},{5,7,1},{4,5,1},{6,5,1},{2,3,2},{3,3,2},{4,3,2},{5,3,2},{8,2,2},{8,3,2},{8,4,2},{8,5,2},{5,8,2},{6,8,2},{7,8,2},{8,8,2},{9,8,2}}"
+--  packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2,2}}"
  }
 }
 
@@ -144,7 +145,7 @@ color maps:
  3=teleport, blue
  4=teleport, pink
  5=teleport, brown
- 6=white to dark-blue
+ 6=white to dark-purple
  7=white to dark-green
  8=title screen bot, pink
  9=gap filled by box
@@ -154,7 +155,7 @@ color maps:
 13=gap, grass/ground
 14=gap, default
 ]]
-colmaps=unpack("{80,101,118,16},{131,155},{129,156},{141,158},{132},{113},{115},{206,29,210,86,101,224},{86,102,22},{81,109,124},{245,168,138,224,209,29,86,101},{245,224},{100,20},{21}")
+colmaps=unpack("{80,101,118,16},{131,155},{129,156},{141,158},{132},{114},{115},{206,29,210,86,101,224},{86,102,22},{81,109,124},{245,168,138,224,209,29,86,101},{245,224},{100,20},{21}")
 colmaps[0]={} --default
 
 --fields
@@ -279,7 +280,6 @@ game=nil
 lvl=nil
 hiscore=0
 score=0
-maxlevel=1
 
 --class inheritance
 function extend(clz,baseclz)
@@ -344,18 +344,6 @@ end
 
 function debug(msg)
  printh(msg,"debug.txt")
-end
-
---the score that would have been
---reached if the best score for
---each level was reached in the
---same game.
-function virtual_hiscore()
- local vscore=0
- for i=1,#level_defs do
-  vscore+=dget(4+i)
- end
- return vscore
 end
 
 function new_msg_box(
@@ -551,24 +539,42 @@ end
 
 function new_endscreen(run_len)
  local me={}
- local msgs={
-  "   +-----------------+",
-  "   | end of the line |",
-  "   +-----------------+",
-  "",
-  " score"
-    ..lpad(score,18),
-  " hi-score"
-    ..lpad(hiscore,15),
-  " virtual hi-score"
-    ..lpad(virtual_hiscore(),7),
-  "",
-  " run length"
-    ..lpad(run_len,8).." lvls",
-  " max run length"
-    ..lpad(dget(4),4).." lvls"
- }
+ local msgs
+ local skipped_level=
+  cartdata_mgr.skipped_level()
 
+ if skipped_level==0 then
+  msgs={
+   "   +-----------------+",
+   "   | end of the line |",
+   "   +-----------------+",
+   "",
+   " score"
+   ..lpad(score,18),
+   " hi-score"
+   ..lpad(hiscore,15),
+   " virtual hi-score"
+   ..lpad(cartdata_mgr.virtual_hi(),7),
+   "",
+   " run length"
+   ..lpad(run_len,8).." lvls",
+   " max run length"
+   ..lpad(dget(4),4).." lvls"
+  }
+ else
+  msgs={
+   "     nearly there...",
+   "",
+   "you still need to finish"
+   .." a level though",
+   "",
+   "please complete level "
+   ..skipped_level
+   .." and return afterwards",
+   "",
+   "it can be done, really!"
+  }
+ end
  --[[
  local msg
  for i=1,#level_defs do
@@ -611,7 +617,7 @@ function new_endscreen(run_len)
    show_mainscreen()
   end
   cnt+=1
-  if cnt==55 then
+  if cnt==55 and skipped_level==0 then
    sfx(4)
   end
  end
@@ -649,7 +655,7 @@ end
 0:vminor
 1:vmajor
 2:hiscore
-3:maxlevel
+3:-free-
 4:max_levelrun
 5:score_level 1
 20:score_level 16
@@ -667,7 +673,6 @@ function new_cartdata_mgr()
  ) then
   --read compatible cartdata
   hiscore=dget(2)
-  maxlevel=dget(3)+1
  else
   --reset incompatible data
   for i=2,20 do
@@ -691,9 +696,51 @@ function new_cartdata_mgr()
 
  me.game_done=function(levelrun)
   dset(2,hiscore)
-  --minus one so default=1
-  dset(3,maxlevel-1)
   dset(4,max(dget(4),levelrun))
+ end
+
+ me.max_level=function()
+  local skip=1
+  local level=1
+  while level<#level_defs do
+   if dget(4+level)==0 then
+    if skip>0 then
+     skip-=1
+    else
+     break
+    end
+   end
+   level+=1
+  end
+  return level
+ end
+
+ me.level_hi=function(level)
+  return dget(4+level)
+ end
+
+ --the score that would have been
+ --reached if the best score for
+ --each level was reached in the
+ --same game.
+ me.virtual_hi=function()
+  local vscore=0
+  for i=1,#level_defs do
+   vscore+=dget(4+i)
+  end
+  return vscore
+ end
+
+ --returns the first skipped
+ --level, if any. returns 0
+ --otherwise
+ me.skipped_level=function()
+  for i=1,#level_defs do
+   if dget(4+i)==0 then
+    return i
+   end
+  end
+  return 0
  end
 
  return me
@@ -2443,6 +2490,7 @@ function levelmenu:init_map()
  self.map_model=map_model
 
  local a0=sprite_address(112)
+ local maxlevel=cartdata_mgr.max_level()
  for c=1,map_model.ncol do
   for r=1,map_model.nrow do
    local pos={c,r}
@@ -2453,8 +2501,12 @@ function levelmenu:init_map()
    if l then
     local chk=
      (flr(c/2)+flr(r/2))%2
+    local digit_col=0
     if l<=maxlevel then
      unit:settype(288+chk*8)
+     if cartdata_mgr.level_hi(l)>0 then
+      digit_col=14-3*chk
+     end
     else
      unit:settype(290+chk*8)
     end
@@ -2466,7 +2518,7 @@ function levelmenu:init_map()
      pos,
      matrix_print:new(
       a0+digit*2+(r%2)*256,
-      10+chk
+      digit_col
      )
     )
    else
@@ -2756,13 +2808,16 @@ function level_done_anim()
     sfx(8)
     clk=59
    else
+    local oldmax=cartdata_mgr.max_level()
     local newhi=cartdata_mgr.level_done(
      game.level_num,
      score-lvl.initial_score
     )
     local msg
-    if lvl.idx>=maxlevel then
-     msg="unlocked next"
+    local newmax=cartdata_mgr.max_level()
+    if oldmax!=newmax then
+     msg="unlocked level "..newmax
+     msg=msg..": "..level_defs[newmax].name
     elseif newhi then
      msg="new level hi!"
     else
@@ -2772,7 +2827,7 @@ function level_done_anim()
    end
   end
 
-  if clk==120 then
+  if clk==180 or btnp(4) then
    if game.next_level() then
     return level_start_anim()
    else
@@ -2803,7 +2858,6 @@ end --level_done_anim
 
 function game_done()
  hiscore=max(hiscore,score)
- maxlevel=max(maxlevel,game.level_num)
  cartdata_mgr.game_done(game.level_run())
 
  menuitem(1)
