@@ -563,16 +563,16 @@ function new_endscreen(run_len)
   }
  else
   msgs={
-   "     nearly there...",
+   "   +-----------------+",
+   "   | nearly there... |",
+   "   +-----------------+",
    "",
-   "you still need to finish"
-   .." a level though",
+   "however, you did not yet "
+   .."complete all levels",
    "",
-   "please complete level "
+   "please retry level "
    ..skipped_level
-   .." and return afterwards",
-   "",
-   "it can be done, really!"
+   .." and return when done"
   }
  end
  --[[
