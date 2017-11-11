@@ -1,5 +1,5 @@
 /-- bumble bots/n
-/-- .* erwin bonsma/n
+/-- eriban/n
 /--\[\[/,/\]\]/ {
 	d
 }
