@@ -5,7 +5,7 @@ __lua__
 -- eriban
 -- (c) 2017
 
-version="1.0"
+version="1.0-alpha"
 
 col_delta={1,0,-1}
 row_delta={0,1,0}
@@ -2506,7 +2506,7 @@ function levelmenu:init_map()
    if l then
     local chk=
      (flr(c/2)+flr(r/2))%2
-    local digit_col=0
+    local digit_col=5
     if l<=maxlevel then
      unit:settype(288+chk*8)
      if cartdata_mgr.level_hi(l)>0 then
