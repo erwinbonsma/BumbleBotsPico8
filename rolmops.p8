@@ -2672,7 +2672,9 @@ function new_game(level_num)
  end
 
  function me.game_over()
-  return lives==0
+  --repeated auto-destruct can
+  --result in negative lives
+  return lives<=0
  end
 
  function me.level_run()
