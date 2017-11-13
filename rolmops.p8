@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 10
 __lua__
--- bumble bots, an action puzzle game
+-- bumble bots, action puzzle game
 -- eriban
 -- (c) 2017
 
