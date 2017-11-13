@@ -5,7 +5,7 @@ __lua__
 -- eriban
 -- (c) 2017
 
-version="1.0-alpha"
+version="1.0"
 
 col_delta={1,0,-1}
 row_delta={0,1,0}
