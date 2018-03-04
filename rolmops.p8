@@ -275,6 +275,16 @@ tiletypes[36]=unpack("0,3,0,false,6,0,0")
 --basic, fixed, green (top-only)
 tiletypes[37]=unpack("0,3,0,false,7,0,0")
 
+-- len,unit,color1,color2
+timebar={
+ {4,1,8,2},
+ {4,2,9,4},
+ {8,4,10,9},
+ {8,8,11,3},
+ {8,16,11,3},
+ {8,32,11,3}
+}
+
 --global game state
 clock=0
 game=nil
@@ -306,13 +316,19 @@ function lpad(val,len)
  return s
 end
 
-function timestr(time_in_sec)
- if time_in_sec<0 then
-  return "0:00"
+function draw_timebar(time_in_sec)
+ local t=time_in_sec
+ local i=1
+ local x=102
+ while (t>0) do
+  local tb=timebar[i]
+  local l=min(tb[1],t/tb[2])-1
+  rectfill(x-l,33,x,34,tb[3])
+  line(x-l,35,x,35,tb[4])
+  t-=tb[2]*tb[1]
+  x-=tb[1]
+  i+=1
  end
- local mn=flr(time_in_sec/60)
- local sc="0"..flr(time_in_sec-60*mn)
- return ""..mn..":"..sub(sc,#sc-1)
 end
 
 --multiple pal() map changes
@@ -2260,16 +2276,8 @@ function baselevel:set_target_camera_pos(
  c,r,update_pos
 )
  local mm=self.map_model
- if mm.ncol<10 then
-  c=mm.ncol/2
- else
-  c=max(5,min(c,mm.ncol-5))
- end
- if mm.nrow<10 then
-  r=mm.nrow/2
- else
-  r=max(5,min(r,mm.nrow-5))
- end
+ c=max(3.5,min(c,mm.ncol-3.5))
+ r=max(3.5,min(r,mm.nrow-3.5))
  self.camera_tx=(c-r)*8
  self.camera_ty=(c+r)*4-40
 
@@ -2286,11 +2294,11 @@ function baselevel:draw()
    self.player.unit.row    
   )
   self.camera_x=
-   0.8*self.camera_x+
-   0.2*self.camera_tx
+   0.85*self.camera_x+
+   0.15*self.camera_tx
   self.camera_y=
-   0.8*self.camera_y+
-   0.2*self.camera_ty
+   0.85*self.camera_y+
+   0.15*self.camera_ty
  end
 
  camera(
@@ -2453,13 +2461,7 @@ end
 function level:draw()
  baselevel.draw(self)
 
- print(
-  timestr(self.time_left/30),
-  56,2,
-  8+min(3,flr(abs(
-   self.time_left/300
-  )))
- )
+ draw_timebar(self.time_left/30)
 end
 
 levelmenu={}
@@ -2608,16 +2610,17 @@ function new_game(level_num)
  function me.draw()
   lvl:draw()
   for i=1,lives do
-   spr(132,i*10-8,-6,1,2)
+   spr(61,i*5+18,32,1,1)
   end
 
   local s
   if score>=max(1,hiscore) then
-   s="hs: "..score
+   s="hs:"..score
   else
-   s="s: "..score
+   s="s:"..score
   end
-  print(s,128-4*#s,2,6)
+  --todo: only show when changed
+  --print(s,104-4*#s,33,6)
 
   if anim then
    anim.draw()
@@ -2626,6 +2629,14 @@ function new_game(level_num)
   if msg then
    print(msg,0,120,11)
   end
+
+  --hide borders of screen to
+  --simulate gamebuino screen
+  color(1)
+  rectfill(0,0,127,31)
+  rectfill(0,96,127,127)
+  rectfill(0,32,23,95)
+  rectfill(104,32,127,95)
  end
 
  function me.update()
@@ -2729,10 +2740,6 @@ function die_anim(cause)
  function me.update()
   clk+=1
 
-  if clk==1 then
-   sfx(1)
-  end
-
   if clk==100 then
    if game.game_over() then
     game_done()
@@ -2754,6 +2761,7 @@ function die_anim(cause)
 
  lvl.map_model.wave_strength_delta=-1
  lvl:freeze()
+ sfx(1)
 
  return me
 end --die_anim
@@ -2946,14 +2954,14 @@ ff7777777777777fff7777777777777fff7777777777777fffff88884444fffff76556556656657f
 6666666655555555fffffffa94fffffff66777777777775566666666555555556666666655555555f665555555fffffffffffff665555555633333bb333333dd
 6666666655555555fffffffa94fffffff66667777777555566666666555555556666666655555555f665555555fffffffffffff665555555f6633333bb33ddff
 6666666655555555fffffffa94fffffff66666677755555566666666555555556666666655555555f665555555fffffffffffff665555555fff6633333ddffff
-00011600000000000fffffffff000000fff66666655555ff6666666655555555666666665555555500000000000000000099000088888888fffff663ddffffff
-0115566600000000000fffff00000000fffff6666555ffff666666665555555566666666555555550066500000665000999999008ffffff8fffffff6ffffffff
-155116666000000000000f0000000000fffffff665ffffff666666665555555566666666555555550666550006665500499999208ffffff8ffffffffffffffff
-00155660000000000000000000000000ffffffffffffffff666666665555555566666666555555550666651066666510444922208ffffff8ffffffffffffffff
-00001000000000000000000000000000ffffffffffffffff666666665555555566666666555555556666655166666551044422008ffffff8ffffffffffffffff
-00000000000000000000000000000000ffffffffffffffff666666665555555566666666555555556666655166665551000400008ffffff8ffffffffffffffff
-00000000000000000000000000000000ffffffffffffffff666666665555555566666666555555556666555066665550000000008ffffff8ffffffffffffffff
-00000000000000000000000000000000ffffffffffffffff6666666655555555666666665555555500665500066555000000000088888888ffffffffffffffff
+00011600000000000fffffffff000000fff66666655555ff6666666655555555666666665555555500000000000000000099000000000000fffff663ddffffff
+0115566600000000000fffff00000000fffff6666555ffff66666666555555556666666655555555006650000066500099999900000cc000fffffff6ffffffff
+155116666000000000000f0000000000fffffff665ffffff6666666655555555666666665555555506665500066655004999992000cccc00ffffffffffffffff
+00155660000000000000000000000000ffffffffffffffff6666666655555555666666665555555506666510666665104449222000dcc100ffffffffffffffff
+00001000000000000000000000000000ffffffffffffffff6666666655555555666666665555555566666551666665510444220000dd1100ffffffffffffffff
+00000000000000000000000000000000ffffffffffffffff6666666655555555666666665555555566666551666655510004000000dd1100ffffffffffffffff
+00000000000000000000000000000000ffffffffffffffff66666666555555556666666655555555666655506666555000000000000d1000ffffffffffffffff
+00000000000000000000000000000000ffffffffffffffff6666666655555555666666665555555500665500066555000000000000000000ffffffffffffffff
 ffffffffffffffff0fffffffffffffffbfffffffffffff3333ffffffffffffff8ffffffffffffff3fffffffffffffff55fffffffffffffff3fffffff88888888
 ffffff00ffffffff000fffffffffffbbbbbffffffffff3bb333fffffffffff89988ffffffffffff3fffffffffffff555555fffffffffff33333fffff8ffffff8
 ffff0000ffffffff00000fffffffbbbb3bbbbfffffff3b9bb833ffffffff899889988fffffffff333ffffffffff5555555555fffffff333333333fff8ffffff8
