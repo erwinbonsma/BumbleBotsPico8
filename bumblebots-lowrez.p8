@@ -430,7 +430,7 @@ function center_print(
  msg,y,col
 )
  print(
-  msg,64-#msg*2,y,col
+  msg,32-#msg*2,y,col
  )
 end
 
@@ -441,44 +441,16 @@ function print_2d(
  print(msg,x,y,col2)
 end
 
-function watermark(x0,y0,x1,y1)
- local a=0x5e16
- local v
- local sh=9
- for x=x0,x1 do
-  for y=y0,y1 do
-   if pget(x,y)==10 then
-    --only take 10 bits
-    if sh==9 then
-     v=shl(peek(a+1),8)+peek(a)
-     --debug(""..a..": "..v)
-     --jump to next int val
-     a+=4
-     sh=0
-    else
-     v=shr(v,1)
-     sh+=1
-    end
-
-    pset(x,y,9+band(v,1))
-   end
-  end
- end
-end
-
 function print_await_key(
  action,key_hint
 )
  local key="🅾️"
  if key_hint then
-  key=key.." (the z key)"
+  key="z"
  end
  local s="press "..key.." to "..action
- local x0=62-#s*2
- print(s,x0,120,10)
- watermark(
-  x0,120,x0+#s*4+3,124
- )
+ local x0=30-#s*2
+ print(s,x0,56,10)
 end
 
 
@@ -488,12 +460,12 @@ end
 function draw_timebar(time_in_sec)
  local t=time_in_sec
  local i=1
- local x=102
+ local x=62
  while (t>0) do
   local tb=timebar[i]
   local l=min(tb[1],t/tb[2])-1
-  rectfill(x-l,33,x,34,tb[3])
-  line(x-l,35,x,35,tb[4])
+  rectfill(x-l,1,x,2,tb[3])
+  line(x-l,3,x,3,tb[4])
   t-=tb[2]*tb[1]
   x-=tb[1]
   i+=1
@@ -503,10 +475,11 @@ end
 function mainscreen_draw()
  cls()
 
- print_2d("bumble bots",1,1,2,14)
+ spr(228,12,12,5,2)
+ spr(233,16,21,4,2)
 
  if clock<30 then
-  center_print("version "..version..", (c) 2017",120,1)
+  center_print("v"..version..", (c) 2017",56,1)
  else
   print_await_key("start",clock>300)
  end
@@ -1021,10 +994,10 @@ end
 function isoline_leaf:draw()
  local unit=self.map_unit
  local x=
-  (unit.col-unit.row)*8+56
+  (unit.col-unit.row)*8+24 --56
  local y=
   (unit.col+unit.row)*4
-  -unit.height+24
+  -unit.height-8 --+24
 
  if unit.colmap_idx>0 then
   multipal(unit.colmap_idx)
@@ -2248,8 +2221,8 @@ function baselevel:set_target_camera_pos(
  c,r,update_pos
 )
  local mm=self.map_model
- c=max(3.5,min(c,mm.ncol-3.5))
- r=max(3.5,min(r,mm.nrow-3.5))
+ c=max(3,min(c,mm.ncol-3))
+ r=max(3,min(r,mm.nrow-3))
  self.camera_tx=(c-r)*8
  self.camera_ty=(c+r)*4-40
 
@@ -2279,6 +2252,7 @@ function baselevel:draw()
  )
  self.map_view.draw()
  camera()
+ print("cx"..self.camera_x..", cy="..self.camera_y,0,100,15)
 end
 
 level={}
@@ -2531,17 +2505,14 @@ function new_levelmenu()
  function me.draw()
   lvl:draw()
 
-  rectfill(20,7,108,22,1)
-
   local idx=level_idx()
-  center_print(
-   "destination:",9,12
-  )
   local dest="unknown"
   if idx<=#level_defs then
    dest=level_defs[idx].name
   end
-  center_print(dest,16,7)
+  local w=#dest*2
+  rectfill(31-w,0,31+w,6,1)
+  print(dest,32-w,1,7)
 
   if msg then
    print(msg,0,110,7)
@@ -2585,7 +2556,7 @@ function new_game(level_num)
  function me.draw()
   lvl:draw()
   for i=1,lives do
-   spr(133,i*5+18,32,1,1)
+   spr(133,i*5-6,0,1,1)
   end
 
   local s
@@ -2604,14 +2575,6 @@ function new_game(level_num)
   if msg then
    print(msg,0,120,11)
   end
-
-  --hide borders of screen to
-  --simulate gamebuino screen
-  color(1)
-  rectfill(0,0,127,31)
-  rectfill(0,96,127,127)
-  rectfill(0,32,23,95)
-  rectfill(104,32,127,95)
  end
 
  function me.update()
@@ -2854,6 +2817,11 @@ function game_over_anim()
 
  return me
 end --game_over_anim
+
+function _init()
+ --low-rez
+ poke(0x5f2c,3)
+end
 
 show_mainscreen()
 
