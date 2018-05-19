@@ -70,8 +70,8 @@ level_defs={{
   packed="map_def={0,24,8,8,1,-240,50},objects={{2,8},{2,7,6,10},{2,9,6,13},{3,9,6,13},{9,5,6,13},{9,6,6,13},{9,7,6,13},{4,9,1,7,9},{5,9,3,9,9}},movers={{2,2},{9,9,1},{4,9,1},{4,7,2},{3,5,1},{2,3,2},{3,3,1},{4,3,1},{5,3,1},{6,3,2},{6,2,2}}"
  },{
   name="the final bit",
-  packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2},{3,2},{9,2},{9,3},{8,9},{9,9},{5,5,1},{5,6,1},{5,7,1},{4,5,1},{6,5,1},{2,3,2},{3,3,2},{4,3,2},{5,3,2},{8,2,2},{8,3,2},{8,4,2},{8,5,2},{5,8,2},{6,8,2},{7,8,2},{8,8,2},{9,8,2}}"
---  packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2,2}}"
+--  packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2},{3,2},{9,2},{9,3},{8,9},{9,9},{5,5,1},{5,6,1},{5,7,1},{4,5,1},{6,5,1},{2,3,2},{3,3,2},{4,3,2},{5,3,2},{8,2,2},{8,3,2},{8,4,2},{8,5,2},{5,8,2},{6,8,2},{7,8,2},{8,8,2},{9,8,2}}"
+  packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2,2}}"
  }
 }
 
@@ -482,7 +482,6 @@ function print_await_key(
  center_print(s,56,10)
 end
 
-
 -->8
 -- game functions
 
@@ -613,7 +612,7 @@ function show_mainscreen()
  clock=0
  _update=mainscreen_update
  _draw=mainscreen_draw
- music(38)
+ --music(38)
 end
 
 function show_levelmenu()
@@ -2409,7 +2408,7 @@ function level:start()
  end
 
  self.playing=true
- music(self.def.map_def[7])
+ --music(self.def.map_def[7])
 end
 
 function level:freeze()
@@ -2579,6 +2578,7 @@ function new_game(level_num)
  local anim=nil
  local lives=3
  local death_cause
+ local last_level_completed=false
 
  me.start_level=level_num
  me.level_num=level_num
@@ -2670,12 +2670,30 @@ function new_game(level_num)
   lvl:update()
  end
 
+ function start_level(restart)
+  --todo: progress tracking
+
+  anim=level_start_anim()
+  return anim
+ end
+
  function me.next_level()
   me.level_num+=1
-  if me.level_num<=#level_defs then
-   init_level()
-   return true
+  if me.level_num>#level_defs then
+   last_level_completed=true
   end
+
+  if last_level_completed then
+   me.level_num=cartdata_mgr.skipped_level()
+   if me.level_num==0 then
+    anim=game_done_anim()
+    return anim
+   end
+  end
+
+  init_level()
+
+  return start_level(false)
  end
 
  menuitem(
@@ -2779,21 +2797,15 @@ function level_done_anim()
      score-lvl.initial_score
     )
     if newhi then
-     endclk=80
+     endclk=150
     else
-     endclk=140
+     endclk=80
     end
    end
   end
 
   if clk==endclk or btnp(4) then
-   if game.next_level() then
-    return level_start_anim()
-   else
-    game_done()
-    show_endscreen(game.level_run())
-    return nil
-   end
+   return game.next_level()
   end
 
   return me
@@ -2801,7 +2813,7 @@ function level_done_anim()
 
  function me.draw()
   if newhi then
-   -- todo: new level hi!
+   spr(192,16,16,4,4)
   end
  end
 
@@ -2827,7 +2839,6 @@ function game_over_anim()
  local me={}
 
  local clk=0
- local msg
 
  function me.update()
   clk+=1
@@ -2840,7 +2851,9 @@ function game_over_anim()
  end
 
  function me.draw()
-  -- todo: game over text
+  --game over
+  spr(140,16,20,4,3)
+  --todo: best game ever
  end
 
  lvl:freeze()
@@ -2848,6 +2861,31 @@ function game_over_anim()
 
  return me
 end --game_over_anim
+
+function game_done_anim()
+ local me={}
+
+ local clk=0
+
+ function me.update()
+  clk+=1
+
+  if btnp(4) or clk>240 then
+   show_endscreen(0)
+  end
+
+  return me
+ end
+
+ function me.draw()
+  --end of the line
+  spr(186,8,20,6,3)
+ end
+
+ sfx(4)
+
+ return me
+end --game_done_anim
 
 function _init()
  --low-rez
