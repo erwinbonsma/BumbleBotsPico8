@@ -426,12 +426,42 @@ function new_msg_box(
  return me
 end --new_msg_box()
 
+function pixlen(s)
+ local l=0
+
+ for i=1,#s do
+  local ch=sub(s,i,i)
+  if ch==" " or ch=="i" then
+   l+=2
+  elseif ch=="🅾️" then
+   l+=8
+  else
+   l+=4
+  end
+ end
+
+ return l
+end
+
 function center_print(
  msg,y,col
 )
- print(
-  msg,32-#msg*2,y,col
- )
+ local w=pixlen(msg)
+ local x=32-w/2
+
+ for i=1,#msg do
+  local ch=sub(msg,i,i)
+  if ch=="i" then
+   line(x,y,x,y+4,col)
+  else
+   print(
+    ch,x,y,col
+   )
+  end
+  x+=pixlen(ch)
+ end
+ 
+ return w
 end
 
 function print_2d(
@@ -449,8 +479,7 @@ function print_await_key(
   key="z"
  end
  local s="press "..key.." to "..action
- local x0=30-#s*2
- print(s,x0,56,10)
+ center_print(s,56,10)
 end
 
 
@@ -2510,9 +2539,11 @@ function new_levelmenu()
   if idx<=#level_defs then
    dest=level_defs[idx].name
   end
-  local w=#dest*2
-  rectfill(31-w,0,31+w,6,1)
-  print(dest,32-w,1,7)
+  local w=pixlen(dest)/2
+  line(32-w,0,30+w,0,1)
+  rectfill(31-w,1,31+w,7,1)
+  line(32-w,8,30+w,8,1)
+  center_print(dest,2,7)
 
   if msg then
    print(msg,0,110,7)
