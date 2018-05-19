@@ -2579,25 +2579,35 @@ function new_game(level_num)
  local lives=3
  local death_cause
  local last_level_completed=false
+ local display_score=0
 
  me.start_level=level_num
  me.level_num=level_num
  score=0
 
+ function draw_score()
+  if display_score<score then
+   display_score+=1
+  end
+  local s=""..display_score
+  local ishi=score>=max(1,hiscore)
+  rectfill(
+   0,0,pixlen(s),6,
+   ishi and 3 or 1
+  )
+  print(s,1,1,ishi and 11 or 12)
+ end
+
  function me.draw()
   lvl:draw()
-  for i=1,lives do
-   spr(133,i*5-6,0,1,1)
-  end
 
-  local s
-  if score>=max(1,hiscore) then
-   s="hs:"..score
+  if display_score<score or lives==0 then
+   draw_score()
   else
-   s="s:"..score
+   for i=1,lives do
+    spr(133,i*5-6,0,1,1)
+   end
   end
-  --todo: only show when changed
-  --print(s,104-4*#s,33,6)
 
   if anim then
    anim.draw()
