@@ -2708,14 +2708,11 @@ function die_anim(cause)
  local me={}
 
  local clk=0
- local msg_box=new_msg_box({
-  cause
- })
 
  function me.update()
   clk+=1
 
-  if clk==100 then
+  if clk==60 then
    if game.game_over() then
     game_done()
     return game_over_anim()
@@ -2729,9 +2726,7 @@ function die_anim(cause)
  end
 
  function me.draw()
-  if clk>30 then
-   msg_box.draw()
-  end
+  -- void
  end
 
  lvl.map_model.wave_strength_delta=-1
@@ -2745,22 +2740,11 @@ function level_start_anim()
  local me={}
 
  local clk=0
- local msg_box=new_msg_box({
-  "level "..lvl.idx..":",
-  level_defs[lvl.idx].name
- })
-
 
  function me.update()
   clk+=1
 
-  if clk==80 then
-   msg_box.append({
-    "ready to bumble?"
-   })
-  end
-
-  if clk==140 or btnp(4) then
+  if clk==60 or btnp(4) then
    lvl:start()
    return nil
   end
@@ -2769,20 +2753,18 @@ function level_start_anim()
  end
 
  function me.draw()
-  msg_box.draw()
+  -- void
  end
 
  return me
 end --level_start_anim
 
-
 function level_done_anim()
  local me={}
 
  local clk=0
- local msg_box=new_msg_box({
-  "level completed!"
- })
+ local endclk
+ local newhi=false
 
  function me.update()
   clk+=1
@@ -2798,29 +2780,19 @@ function level_done_anim()
     sfx(8)
     clk=59
    else
-    local oldmax=cartdata_mgr.max_level()
-    local newhi=cartdata_mgr.level_done(
+    newhi=cartdata_mgr.level_done(
      game.level_num,
      score-lvl.initial_score
     )
-    local msgs
-    local newmax=cartdata_mgr.max_level()
-    if oldmax!=newmax then
-     msgs={
-      "level unlocked:",
-      ""..newmax.."-"
-      ..level_defs[newmax].name
-     }
-    elseif newhi then
-     msgs={"new level hi!"}
+    if newhi then
+     endclk=80
     else
-     msgs={"bumble on..."}
+     endclk=140
     end
-    msg_box.append(msgs)
    end
   end
 
-  if clk==180 or btnp(4) then
+  if clk==endclk or btnp(4) then
    if game.next_level() then
     return level_start_anim()
    else
@@ -2834,8 +2806,8 @@ function level_done_anim()
  end
 
  function me.draw()
-  if clk>=20 then
-   msg_box.draw()
+  if newhi then
+   -- todo: new level hi!
   end
  end
 
@@ -2863,34 +2835,18 @@ function game_over_anim()
  local clk=0
  local msg
 
- local msg_box=new_msg_box({
-  "",
-  "   game over"
- })
-
  function me.update()
   clk+=1
 
-  if btnp(4) then
+  if btnp(4) or clk>240 then
    show_mainscreen()
-  end
-
-  if clk==60 then
-   msg_box.append({
-    " score   :"..lpad(score,5),
-    " hi-score:"..lpad(hiscore,5)
-   })
   end
 
   return me
  end
 
  function me.draw()
-  msg_box.draw()
-
-  if clk>240 then
-   show_mainscreen()
-  end
+  -- todo: game over text
  end
 
  lvl:freeze()
