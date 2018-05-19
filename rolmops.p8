@@ -181,6 +181,9 @@ tiletypes[0]=unpack("14,2,0,true,-1,0,3")
 --basic, fixed
 tiletypes[1]=unpack("0,3,0,true,-1,0,0")
 
+--basic, fixed, light
+tiletypes[11]=unpack("0,3,0,true,0,0,0")
+
 --basic, low flexibility
 tiletypes[2]=unpack("14,2,0,false,-1,0,1")
 
@@ -208,8 +211,6 @@ tiletypes[9]=unpack("10,3,0,true,0,8,0")
 --bridge, bottom-right
 tiletypes[10]=unpack("12,3,0,true,0,8,0")
 
---basic, fixed, light
-tiletypes[11]=unpack("0,3,0,true,0,0,0")
 
 --basic, fixed, blue
 tiletypes[12]=unpack("0,3,0,false,10,0,0")
