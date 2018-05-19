@@ -2538,10 +2538,10 @@ function new_levelmenu()
   if idx<=#level_defs then
    dest=level_defs[idx].name
   end
-  local w=pixlen(dest)/2
-  line(32-w,0,30+w,0,1)
-  rectfill(31-w,1,31+w,7,1)
-  line(32-w,8,30+w,8,1)
+  local w=min(pixlen(dest)/2,30)
+  line(31-w,0,31+w,0,1)
+  rectfill(30-w,1,32+w,7,1)
+  line(31-w,8,31+w,8,1)
   center_print(dest,2,7)
 
   if msg then
