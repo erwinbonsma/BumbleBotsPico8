@@ -64,7 +64,7 @@ level_defs={{
   packed="map_def={16,16,8,8,1,-180,12},objects={{4,3},{8,4},{7,8},{3,7},{3,3,1,4,5},{8,3,5,6,4},{3,8,3,5,7},{8,8,4,7,6}},movers={{9,9},{2,2},{9,2},{6,2,2},{2,5,2},{9,6,2},{5,9,2}}",
  },{
   name="seasick",
-  packed="map_def={24,24,8,8,1,180,12},objects={{2,2},{9,2},{2,9},{9,9},{3,3,1,6,5},{8,3,2,6,6},{8,8,3,5,6},{3,8,4,5,5}},movers={{5,8},{4,2},{7,2},{3,2,2},{2,3,2},{8,2,2},{9,3,2},{2,8,2},{3,9,2},{9,8,2},{8,9,2}}"
+  packed="map_def={24,24,8,8,1,-180,12},objects={{2,2},{9,2},{2,9},{9,9},{3,3,1,6,5},{8,3,2,6,6},{8,8,3,5,6},{3,8,4,5,5}},movers={{5,8},{4,2},{7,2},{3,2,2},{2,3,2},{8,2,2},{9,3,2},{2,8,2},{3,9,2},{9,8,2},{8,9,2}}"
  },{
   name="spring cleaning",
   packed="map_def={0,24,8,8,1,-240,50},objects={{2,8},{2,7,6,10},{2,9,6,13},{3,9,6,13},{9,5,6,13},{9,6,6,13},{9,7,6,13},{4,9,1,7,9},{5,9,3,9,9}},movers={{2,2},{9,9,1},{4,9,1},{4,7,2},{3,5,1},{2,3,2},{3,3,1},{4,3,1},{5,3,1},{6,3,2},{6,2,2}}"
@@ -343,88 +343,6 @@ function debug(msg)
  printh(msg,"debug.txt")
 end
 
-function new_msg_box(
- _msgs,_x0,_y0,_x1,_y1
-)
- local me={}
-
- local msgs=_msgs
- local cursor_idx=0
- local x0=_x0 or 30
- local y0=_y0 or 41
- local x1=_x1 or 98
- local y1=_y1 or 87
- local line_len=(x1-x0-4)/4
-
- local wrap_pos=function(msg)
-  local p=#msg
-  if p>line_len then
-   --wrap line
-   p=line_len+1
-   --wrap at space if possible
-   while sub(msg,p,p)!=" " and p>0 do
-    p-=1
-   end
-   if p==0 then
-    p=line_len
-   end
-  end
-  return p
- end
-
- me.append=function(
-  new_msgs
- )
-  --always add empty line
-  add(msgs,"")
-  for msg in all(new_msgs) do
-   add(msgs,msg)
-  end
- end
-
- me.draw=function()
-  rectfill(x0,y0,x1,y1,0)
-  rect(x0,y0,x1,y1,5)
-  rect(x0,y0,x1-1,y1-1,7)
-  rect(x0+1,y0+1,x1-1,y1-1,6)
-
-  local y=y0+3
-  local rem_chars=flr(
-   cursor_idx/2
-  )+1
-  for msg in all(msgs) do
-   if msg=="" then
-    msg=" "
-   end
-   while rem_chars>0 and #msg>0 do
-    local l=min(
-     wrap_pos(msg),rem_chars
-    )
-    print(
-     sub(msg,1,l),x0+3,y,11
-    )
-    rem_chars-=l
-    if rem_chars==0 then
-     cursor_idx+=1
-     if (
-      cursor_idx%2 and l<line_len
-     ) then
-      print("_",x0+3+l*4,y,11)
-     end
-     l=rem_chars
-    else
-     msg=sub(msg,l+1)
-    end
-    y+=6
-   end
-  end
-
-  return rem_chars>0
- end
-
- return me
-end --new_msg_box()
-
 function pixlen(s)
  local l=0
 
@@ -463,13 +381,6 @@ function center_print(
  return w
 end
 
-function print_2d(
- msg,x,y,col1,col2
-)
- print(msg,x+1,y-1,col1)
- print(msg,x,y,col2)
-end
-
 function print_await_key(
  action,key_hint
 )
@@ -483,21 +394,6 @@ end
 
 -->8
 -- game functions
-
-function draw_timebar(time_in_sec)
- local t=time_in_sec
- local i=1
- local x=62
- while (t>0) do
-  local tb=timebar[i]
-  local l=min(tb[1],t/tb[2])-1
-  rectfill(x-l,1,x,2,tb[3])
-  line(x-l,3,x,3,tb[4])
-  t-=tb[2]*tb[1]
-  x-=tb[1]
-  i+=1
- end
-end
 
 function mainscreen_draw()
  cls()
@@ -530,77 +426,12 @@ end
 
 function new_endscreen(run_len)
  local me={}
- local msgs
- local skipped_level=
-  cartdata_mgr.skipped_level()
 
- if skipped_level==0 then
-  msgs={
-   "   +-----------------+",
-   "   | end of the line |",
-   "   +-----------------+",
-   "",
-   " score"
-   ..lpad(score,18),
-   " hi-score"
-   ..lpad(hiscore,15),
-   " virtual hi-score"
-   ..lpad(cartdata_mgr.virtual_hi(),7),
-   "",
-   " run length"
-   ..lpad(run_len,8).." lvls",
-   " max run length"
-   ..lpad(dget(4),4).." lvls"
-  }
- else
-  msgs={
-   "   +-----------------+",
-   "   | nearly there... |",
-   "   +-----------------+",
-   "",
-   "however, you did not yet "
-   .."complete all levels",
-   "",
-   "please retry level "
-   ..skipped_level
-   .." and return when done"
-  }
- end
- --[[
- local msg
- for i=1,#level_defs do
-  if not msg then
-   msg=""..dget(i+4)
-  else
-   msg=msg..","..dget(i+4)
-  end
-  if #msg>20 then
-   add(msgs,msg)
-   msg=nil
-  end
- end
- if msg then
-  add(msgs,msg)
- end
- ]]
-
- local msg_box=new_msg_box(
-  msgs,12,4,116,74
- )
  local cnt=0
 
  me.draw=function()
-  rectfill(0,0,128,128,3)
-
-  color(7)
-  if msg_box.draw() then
-   print_await_key("continue")
-  end
-
-  --draw bot
-  multipal(11)
-  spr(160,0,70,6,6,true)
-  pal()
+  rectfill(0,0,64,64,3)
+  --todo
  end
 
  me.update=function()
@@ -608,9 +439,6 @@ function new_endscreen(run_len)
    show_mainscreen()
   end
   cnt+=1
-  if cnt==55 and skipped_level==0 then
-   sfx(4)
-  end
  end
 
  return me
@@ -634,6 +462,7 @@ function show_levelmenu()
  local levelmenu=new_levelmenu()
  _update=levelmenu.update
  _draw=levelmenu.draw
+ music(-1)
 end
 
 function start_game(start_level)
@@ -2420,7 +2249,7 @@ function level:start()
  end
 
  self.playing=true
- --music(self.def.map_def[7])
+ music(self.def.map_def[7])
 end
 
 function level:freeze()
@@ -2444,10 +2273,25 @@ function level:update()
  end
 end
 
+function level:draw_timebar()
+ local t=self.time_left/30
+ local i=1
+ local x=62
+ while (t>0) do
+  local tb=timebar[i]
+  local l=min(tb[1],t/tb[2])-1
+  rectfill(x-l,1,x,2,tb[3])
+  line(x-l,3,x,3,tb[4])
+  t-=tb[2]*tb[1]
+  x-=tb[1]
+  i+=1
+ end
+end
+
 function level:draw()
  baselevel.draw(self)
 
- draw_timebar(self.time_left/30)
+ self:draw_timebar()
 end
 
 levelmenu={}
@@ -2793,7 +2637,7 @@ function level_start_anim()
  function me.update()
   clk+=1
 
-  if clk==30 then
+  if clk==15 then
    sfx(42)
   end
 
