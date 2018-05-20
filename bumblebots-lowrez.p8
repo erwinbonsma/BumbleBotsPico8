@@ -326,13 +326,12 @@ function smooth_clamp(h)
  return f*12
 end
 
---note: this is a simple
---approximation that is
---incorrect for x=<-1,0].
---this is no problem where it
---is used.
 function sign(x)
- return abs(x+1)-abs(x)
+ if x==0 then
+  return 0
+ else
+  return x>0 and 1 or -1
+ end
 end
 
 function sprite_address(idx)
@@ -1160,7 +1159,7 @@ function mover:new(o)
  o.rot_dir=0 -- -1,0,1
 
  o.mov_dir=0 -- -1,0,1
- o.mov=0     -- <-mov_max,mov_max]
+ o.mov=0     -- <-16,16]
  o.mov_inc=1 -- -1,1
 
  --height tolerance
@@ -1170,10 +1169,6 @@ function mover:new(o)
  o.rot_del=o.rot_del or 2
  o.rot_turn=5*o.rot_del
  o.rot_max=4*o.rot_turn
-
- --move speed
- o.mov_del=o.mov_del or 2
- o.mov_max=8*o.mov_del
 
  o.drop_speed=1
  o.height=40
@@ -1266,14 +1261,21 @@ end
 function mover:update_dx_dy()
  if self:moving() then
   local h=self:heading()
-  self.dx=flr(
+  --direction
+  self.dx=
    (col_delta[h]-row_delta[h])
-   *self.mov/self.mov_del+0.5
-  )*self.mov_dir
-  self.dy=flr(
+   *self.mov_dir
+  self.dy=
    (col_delta[h]+row_delta[h])
-   *self.mov/self.mov_del/2
-  )*self.mov_dir
+   *self.mov_dir
+
+  if self.mov>0 then
+   self.dx*=flr((self.mov+1)/2)
+   self.dy*=flr((self.mov+2)/4)
+  else
+   self.dx*=ceil(self.mov/2)
+   self.dy*=ceil((self.mov-1)/4)
+  end
  else
   self.dx=0
   self.dy=0
@@ -1293,11 +1295,10 @@ function mover:move_step()
  self.mov+=self.mov_inc
 
  local relmov=(
-  self.mov*self.mov_inc+
-  self.mov_max
- )%self.mov_max
+  self.mov*self.mov_inc+16
+ )%16
 
- if relmov==2*self.mov_del then
+ if relmov==3 then
   --about to enter next unit
   local to_unit=self.unit:neighbour(
    self:move_heading()
@@ -1311,10 +1312,10 @@ function mover:move_step()
    self.mov+=self.mov_inc
    self:bump()
   end
- elseif relmov==4*self.mov_del then
+ elseif relmov==8 then
   --halfway crossing
   self:swap_unit()
- elseif relmov==6*self.mov_del+1 then
+ elseif relmov==14 then
   --exited source unit
   self:exited_unit()
  elseif relmov==0 then
@@ -1389,7 +1390,7 @@ function mover:entering_unit(to_unit)
   self.unit.col+self.unit.row
  ) then
   to_unit:add_mover(self)
-  self.mov-=self.mov_max*sign(self.mov)
+  self.mov-=16*sign(self.mov)
  end
 end
 
@@ -1402,7 +1403,7 @@ end
 function mover:exited_unit()
  if (self.draw_unit!=self.unit) then
   self.unit:add_mover(self)
-  self.mov-=self.mov_max*sign(self.mov)
+  self.mov-=16*sign(self.mov)
  end
  self.unit2=nil
 end
@@ -2266,21 +2267,16 @@ function baselevel:draw()
    self.player.unit.col,
    self.player.unit.row    
   )
-  self.camera_x=
-   0.85*self.camera_x+
-   0.15*self.camera_tx
-  self.camera_y=
-   0.85*self.camera_y+
-   0.15*self.camera_ty
+  --move camera, max one pixel
+  self.camera_x+=sign(self.camera_tx-self.camera_x)
+  self.camera_y+=sign(self.camera_ty-self.camera_y)
  end
 
  camera(
-  flr(self.camera_x+0.5),
-  flr(self.camera_y+0.5)
+  self.camera_x,self.camera_y
  )
  self.map_view.draw()
  camera()
- print("cx"..self.camera_x..", cy="..self.camera_y,0,100,15)
 end
 
 level={}
