@@ -268,7 +268,7 @@ tiletypes[36]=unpack("0,3,0,false,6,0,0")
 --basic, fixed, green (top-only)
 tiletypes[37]=unpack("0,3,0,false,7,0,0")
 
--- len,unit,color1,color2
+--len,unit,color1,color2
 timebar={
  {4,1,8,2},
  {4,2,9,4},
@@ -276,6 +276,13 @@ timebar={
  {8,8,11,3},
  {8,16,11,3},
  {8,32,11,3}
+}
+
+--darkcolor,lightcolor
+progressbar={
+ {3,11}, --green
+ {9,10}, --orange/yellow
+ {4,12}  --brown/red
 }
 
 --global game state
@@ -429,8 +436,51 @@ function new_endscreen(run_len)
 
  local cnt=0
 
+ function draw_screen()
+  rectfill(3,3,60,43,0)
+  rect(1,1,62,45,0)
+  rect(1,1,61,44,6)
+  rect(2,2,61,44,5)
+
+  rectfill(2,38,61,43,5)
+  rect(7,39,56,43,6)
+  rect(7,39,55,42,0)
+ end
+
+ function draw_progressbar()
+  local maxl=progress_mgr.max_level()
+  local y=40
+  for l=1,#level_defs do
+   local score=progress_mgr.level_hi(l)
+   local x=5+l*3
+   local c=(
+    score>0 and 1 or
+    (l<maxl and 2 or 3)
+   )
+   for b=0,8 do
+    local ishi=1+(b+score)%2
+    color(progressbar[c][ishi])
+    pset(x+b%3,y+b/3)
+    score=flr(score/2)
+   end
+  end
+ end
+
  me.draw=function()
-  rectfill(0,0,64,64,3)
+  rectfill(0,0,64,64,2)
+
+  draw_screen()
+  draw_progressbar()
+
+  color(11)
+  print("    score:",4,4)
+  print(" 888",45,4)
+  print("       hi:",4,10)
+  print("1234",45,10)
+
+  print("level run:",4,18)
+  print("      max:",4,24)
+  print("level sum:",4,32)
   --todo
  end
 
@@ -485,8 +535,6 @@ end
 function is_fall(h_from,h_to)
  return h_from>h_to+6
 end
--->8
--- maps (and waves)
 
 --[[
 0:vminor
@@ -497,7 +545,7 @@ end
 5:score_level 1
 20:score_level 16
 ]]
-function new_cartdata_mgr()
+function new_progress_mgr()
  local me={}
  local vmajor=1
  local vminor=1
@@ -583,7 +631,9 @@ function new_cartdata_mgr()
  return me
 end
 
-cartdata_mgr=new_cartdata_mgr()
+progress_mgr=new_progress_mgr()
+-->8
+-- maps (and waves)
 
 map_unit={}
 
@@ -2327,7 +2377,7 @@ function levelmenu:init_map()
  self.map_model=map_model
 
  local a0=sprite_address(128)
- local maxlevel=cartdata_mgr.max_level()
+ local maxlevel=progress_mgr.max_level()
  for c=1,map_model.ncol do
   for r=1,map_model.nrow do
    local pos={c,r}
@@ -2341,7 +2391,7 @@ function levelmenu:init_map()
     local digit_col=5
     if l<=maxlevel then
      unit:settype(288+chk*8)
-     if cartdata_mgr.level_hi(l)>0 then
+     if progress_mgr.level_hi(l)>0 then
       digit_col=14-3*chk
      end
     else
@@ -2565,7 +2615,7 @@ function new_game(level_num)
   end
 
   if last_level_completed then
-   me.level_num=cartdata_mgr.skipped_level()
+   me.level_num=progress_mgr.skipped_level()
    if me.level_num==0 then
     anim=game_done_anim()
     return anim
@@ -2677,7 +2727,7 @@ function level_done_anim()
     sfx(8)
     clk=59
    else
-    newhi=cartdata_mgr.level_done(
+    newhi=progress_mgr.level_done(
      game.level_num,
      score-lvl.initial_score
     )
@@ -2715,7 +2765,7 @@ end --level_done_anim
 
 function game_done()
  hiscore=max(hiscore,score)
- cartdata_mgr.game_done(game.level_run())
+ progress_mgr.game_done(game.level_run())
 
  menuitem(1)
  menuitem(2)
@@ -2778,9 +2828,9 @@ function _init()
  poke(0x5f2c,3)
 end
 
-show_mainscreen()
+--show_mainscreen()
 
---show_endscreen(0)
+show_endscreen(0)
 
 --eof
 __gfx__
