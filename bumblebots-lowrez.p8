@@ -2613,8 +2613,10 @@ function new_game(level_num)
   end
 
   if slowmo then
-   print("sm",1,58,1)
+   print("sm",56,58,1)
   end
+
+  print("cpu:"..flr(stat(1)*100),1,58,1)
  end
 
  function me.update()
