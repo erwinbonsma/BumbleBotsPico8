@@ -429,7 +429,7 @@ function mainscreen_update()
  end
 end
 
-function new_endscreen(run_len)
+function new_endscreen()
  local me={}
 
  local cnt=0
@@ -473,7 +473,7 @@ function new_endscreen(run_len)
   print(lpad(val,4),45,y)
  end
 
- me.draw=function()
+ function me.draw()
   rectfill(0,0,64,64,0)
 
   draw_screen()
@@ -499,7 +499,7 @@ function new_endscreen(run_len)
   spr(144,8-d/2,40+d/4,3,3)
  end
 
- me.update=function()
+ function me.update()
   if btnp(4) then
    show_mainscreen()
   end
@@ -538,8 +538,8 @@ function start_game(start_level)
  music(-1)
 end
 
-function show_endscreen(levelrun)
- local es=new_endscreen(levelrun)
+function show_endscreen()
+ local es=new_endscreen()
  _update=es.update
  _draw=es.draw
 end
@@ -2495,7 +2495,7 @@ end
 function new_levelmenu()
  local me={}
 
- function level_idx()
+ local function level_idx()
   local unit=lvl.player.unit
   return lvl:level_at(
    {unit.col,unit.row}
@@ -2516,9 +2516,6 @@ function new_levelmenu()
   line(31-w,8,31+w,8,1)
   center_print(dest,2,7)
 
-  if msg then
-   print(msg,0,110,7)
-  end
   print_await_key("start")
  end
 
@@ -2561,7 +2558,7 @@ function new_game(level_num)
  me.level_num=level_num
  me.score=0
 
- function draw_score()
+ local function draw_score()
   if display_score<me.score then
    display_score+=1
   end
@@ -2643,7 +2640,7 @@ function new_game(level_num)
   anim=level_done_anim()
  end
 
- function init_level()
+ local function init_level()
   lvl=level:new(me.level_num)
   lvl:update()
  end
@@ -2710,7 +2707,6 @@ end --new_game()
 
 function die_anim(cause)
  local me={}
-
  local clk=0
 
  function me.update()
@@ -2740,7 +2736,6 @@ end --die_anim
 
 function level_start_anim()
  local me={}
-
  local clk=0
 
  function me.update()
@@ -2767,7 +2762,6 @@ end --level_start_anim
 
 function level_done_anim()
  local me={}
-
  local clk=0
  local endclk
  local newhi=false
@@ -2830,7 +2824,6 @@ end
 
 function game_over_anim()
  local me={}
-
  local clk=0
 
  function me.update()
@@ -2865,14 +2858,13 @@ end --game_over_anim
 
 function game_done_anim()
  local me={}
-
  local clk=0
 
  function me.update()
   clk+=1
 
-  if btnp(4) or clk>90 then
-   show_endscreen(0)
+  if btnp(4) or clk>120 then
+   show_endscreen()
   end
 
   return me
