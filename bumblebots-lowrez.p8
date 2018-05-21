@@ -3,9 +3,7 @@ version 16
 __lua__
 -- bumble bots, action puzzle game
 -- eriban
--- (c) 2017
-
-version="1.0"
+-- (c) 2017-2018
 
 col_delta={1,0,-1}
 row_delta={0,1,0}
