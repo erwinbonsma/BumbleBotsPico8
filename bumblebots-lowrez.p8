@@ -2588,10 +2588,6 @@ function new_game(level_num)
  local display_score=0
  local hiscore=progress_mgr.hiscore()
 
- --todo: remove
- local slowcnt=0
- local slowmo=false
-
  me.level_num=level_num
  me.score=0
 
@@ -2622,25 +2618,9 @@ function new_game(level_num)
   if anim then
    anim.draw()
   end
-
-  if slowmo then
-   print("sm",56,58,1)
-  end
-
-  print("cpu:"..flr(stat(1)*100),1,58,1)
  end
 
  function me.update()
-  slowcnt+=1
-  if slowcnt%20!=0 and slowmo then
-   return
-  end
-
-  --debug only, todo: remove
-  if btnp(5) then
-   slowmo=not slowmo
-  end
-
   clock+=1
 
   if anim then
