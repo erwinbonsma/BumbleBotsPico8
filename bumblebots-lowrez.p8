@@ -438,13 +438,13 @@ function new_endscreen(run_len)
 
  function draw_screen()
   rectfill(3,2,60,43,0)
-  rect(1,0,62,45,2)
+  rect(1,0,62,45,1)
   rect(1,0,61,44,6)
   rect(2,1,61,44,5)
 
   rectfill(2,35,61,43,5)
   rect(4,37,53,41,6)
-  rect(4,37,52,40,2)
+  rect(4,37,52,40,1)
   spr(201,55,37,1,1) --button
  end
 
@@ -510,7 +510,7 @@ function show_mainscreen()
 
  _update=mainscreen_update
  _draw=mainscreen_draw
- music(11)
+ music(0)
 end
 
 function show_levelmenu()
@@ -2785,7 +2785,7 @@ function game_over_anim()
   clk+=1
 
   if btnp(4) or clk>240 then
-   show_mainscreen()
+   show_endscreen()
   end
 
   return me
