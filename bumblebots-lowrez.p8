@@ -282,15 +282,13 @@ timebar={
 progressbar={
  {3,11}, --green
  {9,10}, --orange/yellow
- {4,12}  --brown/red
+ {2,8}   --purple/red
 }
 
 --global game state
 clock=0
 game=nil
 lvl=nil
-hiscore=0
-score=0
 
 -->8
 --utility functions
@@ -456,7 +454,7 @@ function new_endscreen(run_len)
    local x=2+l*3
    local c=(
     score>0 and 1 or
-    (l<maxl and 2 or 3)
+    (l<=maxl and 2 or 3)
    )
    for b=0,8 do
     local ishi=1+(b+score)%2
@@ -467,21 +465,34 @@ function new_endscreen(run_len)
   end
  end
 
+ local function printval(
+  val,y,improved
+ )
+  local h=improved and cnt%30>15
+  color(h and 11 or 3)
+  print(lpad(val,4),45,y)
+ end
+
  me.draw=function()
   rectfill(0,0,64,64,0)
 
   draw_screen()
   draw_progressbar()
 
-  color(11)
-  print("    score:",4,3)
-  print(" 888",45,3)
-  print("       hi:",4,9)
-  print("1234",45,9)
+  local pm=progress_mgr
 
+  color(3)
+  print("    score:",4,3)
+  print("       hi:",4,9)
   print("level run:",4,16)
   print("      max:",4,22)
   print("level sum:",4,29)
+
+  printval(game.score,3,pm.improved_hi)
+  printval(pm.hiscore(),9,pm.improved_hi)
+  printval(pm.levelrun,16,pm.improved_levelrun)
+  printval(pm.max_levelrun(),22,pm.improved_levelrun)
+  printval(pm.virtual_hi(),29,pm.improved_virtualhi)
 
   --bot
   local d=max(0,80-cnt)
@@ -554,6 +565,118 @@ function new_progress_mgr()
  local me={}
  local vmajor=1
  local vminor=1
+ local level_startscore
+ local level_resumed
+
+ local function update_hi()
+  if game.score>dget(2) then
+   dset(2,game.score)
+   me.improved_hi=true
+  end
+ end
+
+ function me.start_game()
+  me.levelrun=0
+  me.improved_hi=false
+  me.improved_virtualhi=false
+  me.improved_levelrun=false
+  level_resumed=false
+ end
+
+ function me.start_level(score)
+  level_startscore=score
+  level_resumed=false
+ end
+
+ function me.resume_level()
+  level_resumed=true
+ end
+
+ function me.level_done()
+  local level=game.level_num
+  local new=game.score-level_startscore
+  local old=dget(4+level)
+  local improved_levelhi=false
+
+  if new>old then
+   if not level_resumed then
+    --new level hi!
+    dset(4+level,new)
+    improved_levelhi=true
+    me.improved_virtualhi=true
+   elseif old==0 then
+    --remember progress
+    dset(4+level,1)
+   end
+  end
+
+  me.levelrun+=1
+  if me.levelrun>dget(4) then
+   dset(4,me.levelrun)
+   me.improved_levelrun=true
+  end
+
+  update_hi()
+
+  return improved_levelhi
+ end
+
+ function me.game_done()
+  update_hi()
+  return me.improved_hi
+ end
+
+ function me.max_level()
+  local skip=1
+  local level=1
+  while level<#level_defs do
+   if dget(4+level)==0 then
+    if skip>0 then
+     skip-=1
+    else
+     break
+    end
+   end
+   level+=1
+  end
+  return level
+ end
+
+ function me.hiscore()
+  return dget(2)
+ end
+
+ function me.level_hi(level)
+  return dget(4+level)
+ end
+
+ --the score that would have been
+ --reached if the best score for
+ --each level was reached in the
+ --same game.
+ function me.virtual_hi()
+  local vscore=0
+  for i=1,#level_defs do
+   vscore+=dget(4+i)
+  end
+  return vscore
+ end
+
+ function me.max_levelrun()
+  return dget(4)
+ end
+
+ --returns the first skipped
+ --level, if any. returns 0
+ --otherwise
+ function me.skipped_level()
+  for i=1,#level_defs do
+   if dget(4+i)==0 then
+    return i
+   end
+  end
+  return 0
+ end
 
  --init
  cartdata("eriban_bumblebots")
@@ -572,66 +695,6 @@ function new_progress_mgr()
 
  dset(0,vmajor)
  dset(1,vminor)
-
- me.level_done=function(
-  level,level_score
- )
-  --update level high
-  local old=dget(4+level)
-  if level_score>old then
-   dset(4+level,level_score)
-   return true --signal new hi
-  end
- end
-
- me.game_done=function(levelrun)
-  dset(2,hiscore)
-  dset(4,max(dget(4),levelrun))
- end
-
- me.max_level=function()
-  local skip=1
-  local level=1
-  while level<#level_defs do
-   if dget(4+level)==0 then
-    if skip>0 then
-     skip-=1
-    else
-     break
-    end
-   end
-   level+=1
-  end
-  return level
- end
-
- me.level_hi=function(level)
-  return dget(4+level)
- end
-
- --the score that would have been
- --reached if the best score for
- --each level was reached in the
- --same game.
- me.virtual_hi=function()
-  local vscore=0
-  for i=1,#level_defs do
-   vscore+=dget(4+i)
-  end
-  return vscore
- end
-
- --returns the first skipped
- --level, if any. returns 0
- --otherwise
- me.skipped_level=function()
-  for i=1,#level_defs do
-   if dget(4+i)==0 then
-    return i
-   end
-  end
-  return 0
- end
 
  return me
 end
@@ -2110,7 +2173,7 @@ function baselevel:pickup_collected(
   self.collected_pickups,
   pickup
  )
- score+=10
+ game.score+=10
 
  self:checkdone()
 end
@@ -2120,7 +2183,7 @@ function baselevel:box_destroyed(
 )
  if box.box_type==2 then
   self.num_boxes_removed+=1
-  score+=10
+  game.score+=10
   sfx(3)
  end
 
@@ -2191,8 +2254,6 @@ function level:new(idx,o)
  setmetatable(o,self)
  self.__index=self
 
- o.initial_score=score
-
  for spec in all(o.def.objects) do
   o:add_object_from_specs(
    spec
@@ -2220,9 +2281,6 @@ function level:init_map()
   dirwave:new(
    0.10,{a=map_def[5]}
   )
- )
- self.time_left=abs(
-  map_def[6]*30
  )
  self.hard_reset=map_def[6]<0
 
@@ -2293,6 +2351,9 @@ function level:reset()
 
  self:set_target_camera_pos(
   self.def.movers[1]
+ )
+ self.time_left=abs(
+  self.def.map_def[6]*30
  )
 end
 
@@ -2491,20 +2552,21 @@ function new_game(level_num)
  local death_cause
  local last_level_completed=false
  local display_score=0
+ local hiscore=progress_mgr.hiscore()
 
+ --todo: remove
  local slowcnt=0
  local slowmo=false
 
- me.start_level=level_num
  me.level_num=level_num
- score=0
+ me.score=0
 
  function draw_score()
-  if display_score<score then
+  if display_score<me.score then
    display_score+=1
   end
   local s=""..display_score
-  local ishi=score>=max(1,hiscore)
+  local ishi=me.score>=hiscore
   rectfill(
    0,0,pixlen(s),6,
    ishi and 3 or 1
@@ -2515,7 +2577,7 @@ function new_game(level_num)
  function me.draw()
   lvl:draw()
 
-  if display_score<score or lives==0 then
+  if display_score<me.score or lives==0 then
    draw_score()
   else
    for i=1,lives do
@@ -2562,22 +2624,6 @@ function new_game(level_num)
   end
  end
 
- function me.reset()
-  if (
-   --hard reset on time-out
-   lvl.time_left<=0 or
-   --and for specific levels
-   lvl.hard_reset
-  ) then
-   --recreate level, resetting
-   --time and all pick-ups
-   lvl=level:new(
-    me.level_num
-   )
-  end
-  lvl:reset()
- end
-
  function me.signal_death(cause)
   death_cause=cause
  end
@@ -2593,10 +2639,6 @@ function new_game(level_num)
   return lives<=0
  end
 
- function me.level_run()
-  return me.level_num-me.start_level
- end
-
  function me.level_done()
   anim=level_done_anim()
  end
@@ -2606,8 +2648,22 @@ function new_game(level_num)
   lvl:update()
  end
 
- function start_level(restart)
-  --todo: progress tracking
+ function me.start_level(restart)
+  local resume=restart
+  if restart then
+   if lvl.hard_reset then
+    init_level()
+    resume=false
+   end
+  end
+
+  if resume then
+   progress_mgr.resume_level()
+  else
+   progress_mgr.start_level(me.score)
+  end
+
+  lvl:reset()
 
   anim=level_start_anim()
   return anim
@@ -2629,7 +2685,7 @@ function new_game(level_num)
 
   init_level()
 
-  return start_level(false)
+  return me.start_level(false)
  end
 
  menuitem(
@@ -2642,12 +2698,12 @@ function new_game(level_num)
  )
  menuitem(
   2,"abort game",function()
-   game_done()
-   anim=game_over_anim()
+   anim=game_done()
   end
  )
+ progress_mgr.start_game()
  init_level()
- anim=level_start_anim()
+ me.start_level(false)
 
  return me
 end --new_game()
@@ -2662,11 +2718,9 @@ function die_anim(cause)
 
   if clk==60 then
    if game.game_over() then
-    game_done()
-    return game_over_anim()
+    return game_done()
    else
-    game.reset()
-    return level_start_anim()
+    return game.start_level(true)
    end
   end
 
@@ -2728,14 +2782,11 @@ function level_done_anim()
   if clk==60 then
    if lvl.time_left>0 then
     lvl.time_left-=30
-    score+=1
+    game.score+=1
     sfx(8)
     clk=59
    else
-    newhi=progress_mgr.level_done(
-     game.level_num,
-     score-lvl.initial_score
-    )
+    newhi=progress_mgr.level_done()
     if newhi then
      sfx(41)
      endclk=150
@@ -2769,11 +2820,12 @@ function level_done_anim()
 end --level_done_anim
 
 function game_done()
- hiscore=max(hiscore,score)
- progress_mgr.game_done(game.level_run())
+ progress_mgr.game_done()
 
  menuitem(1)
  menuitem(2)
+
+ return game_over_anim()
 end
 
 function game_over_anim()
@@ -2811,7 +2863,7 @@ function game_done_anim()
  function me.update()
   clk+=1
 
-  if btnp(4) or clk>240 then
+  if btnp(4) or clk>90 then
    show_endscreen(0)
   end
 
@@ -2833,9 +2885,7 @@ function _init()
  poke(0x5f2c,3)
 end
 
---show_mainscreen()
-
-show_endscreen(0)
+show_mainscreen()
 
 --eof
 __gfx__
