@@ -397,6 +397,45 @@ function print_await_key(
  center_print(s,58,10)
 end
 
+function new_music_player()
+ local me={}
+ local enabled=false
+ local active_track=-1
+
+ function me.play(track)
+  active_track=track
+  if enabled then
+   music(active_track)
+  end
+ end
+
+ function me.stop()
+  active_track=-1
+  if enabled then
+   music(active_track)
+  end
+ end
+
+ function me.toggle_enabled()
+  enabled=not enabled
+  if enabled then
+   music(active_track)
+  else
+   music(-1)
+  end
+  local s=enabled and "off" or "on"
+  menuitem(
+   5,"music "..s,
+   me.toggle_enabled
+  )
+ end
+
+ --add menu item
+ me.toggle_enabled()
+
+ return me
+end
+
 -->8
 -- game functions
 
@@ -521,21 +560,20 @@ function show_mainscreen()
 
  _update=mainscreen_update
  _draw=mainscreen_draw
- music(0)
+ music_player.play(0)
 end
 
 function show_levelmenu()
  local levelmenu=new_levelmenu()
  _update=levelmenu.update
  _draw=levelmenu.draw
- music(-1)
+ music_player.stop()
 end
 
 function start_game(start_level)
  game=new_game(start_level)
  _update=game.update
  _draw=game.draw
- music(-1)
 end
 
 function show_endscreen()
@@ -699,7 +737,6 @@ function new_progress_mgr()
  return me
 end
 
-progress_mgr=new_progress_mgr()
 -->8
 -- maps (and waves)
 
@@ -2365,14 +2402,14 @@ function level:start()
  end
 
  self.playing=true
- music(self.def.map_def[7])
+ music_player.play(self.def.map_def[7])
 end
 
 function level:freeze()
  baselevel.freeze(self)
 
  self.playing=false
- music(-1)
+ music_player.stop()
 end
 
 function level:update()
@@ -2883,9 +2920,12 @@ end --game_done_anim
 function _init()
  --low-rez
  poke(0x5f2c,3)
-end
 
-show_mainscreen()
+ progress_mgr=new_progress_mgr()
+ music_player=new_music_player()
+
+ show_mainscreen()
+end
 
 --eof
 __gfx__
