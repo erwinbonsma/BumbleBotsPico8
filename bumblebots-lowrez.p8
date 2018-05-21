@@ -540,7 +540,7 @@ function new_endscreen()
 
  function me.update()
   if btnp(4) then
-   show_mainscreen()
+   show_levelmenu()
   end
   cnt+=1
  end
@@ -2723,15 +2723,7 @@ function new_game(level_num)
  end
 
  menuitem(
-  1,"auto destruct",function()
-   me.signal_death(
-    "rebooting..."
-   )
-   me.handle_death()
-  end
- )
- menuitem(
-  2,"abort game",function()
+  1,"abort game",function()
    anim=game_done()
   end
  )
@@ -2854,7 +2846,6 @@ function game_done()
  progress_mgr.game_done()
 
  menuitem(1)
- menuitem(2)
 
  return game_over_anim()
 end
