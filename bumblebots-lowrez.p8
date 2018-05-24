@@ -21,6 +21,7 @@ row_delta[0]=-1
 --  mover={c,r[,type,...]}
 --  - box={c,r,1-2}
 
+num_levels=16 --playable levels
 level_defs={{
   name="going down",
   packed="map_def={24,16,8,8,0,60,38},objects={{9,2},{4,3},{9,4},{2,9},{9,6},{4,7},{9,8},{4,9},{2,2},{2,4},{4,5},{2,5},{2,7}},movers={{3,3}}"
@@ -70,6 +71,9 @@ level_defs={{
   name="the final bit",
 --  packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2},{3,2},{9,2},{9,3},{8,9},{9,9},{5,5,1},{5,6,1},{5,7,1},{4,5,1},{6,5,1},{2,3,2},{3,3,2},{4,3,2},{5,3,2},{8,2,2},{8,3,2},{8,4,2},{8,5,2},{5,8,2},{6,8,2},{7,8,2},{8,8,2},{9,8,2}}"
   packed="map_def={8,24,8,8,1,-240,12},objects={{6,2,6},{9,6,6},{4,9,6}},movers={{6,6},{2,2,2}}"
+ },{
+  name="title",
+  packed="map_def={9,1,7,7,1,180,0},objects={{3,3},{7,3},{3,7},{7,7}},movers={{5,8},{4,2}}"
  }
 }
 
@@ -486,7 +490,7 @@ function new_endscreen()
  function draw_progressbar()
   local maxl=progress_mgr.max_level()
   local y=38
-  for l=1,#level_defs do
+  for l=1,num_levels do
    local score=progress_mgr.level_hi(l)
    local x=2+l*3
    local c=(
@@ -549,12 +553,12 @@ end --new_endscreen()
 function show_mainscreen()
  clock=0
 
- lvl=level:new(3)
+ lvl=level:new(17)
  lvl:start()
  lvl:freeze()
  lvl:update()
  --let enemy face player
- lvl.movers[3]:set_heading(2)
+ lvl.movers[2]:set_heading(2)
 
  _update=mainscreen_update
  _draw=mainscreen_draw
@@ -665,7 +669,7 @@ function new_progress_mgr()
  function me.max_level()
   local skip=1
   local level=1
-  while level<#level_defs do
+  while level<num_levels do
    if dget(4+level)==0 then
     if skip>0 then
      skip-=1
@@ -692,7 +696,7 @@ function new_progress_mgr()
  --same game.
  function me.virtual_hi()
   local vscore=0
-  for i=1,#level_defs do
+  for i=1,num_levels do
    vscore+=dget(4+i)
   end
   return vscore
@@ -706,7 +710,7 @@ function new_progress_mgr()
  --level, if any. returns 0
  --otherwise
  function me.skipped_level()
-  for i=1,#level_defs do
+  for i=1,num_levels do
    if dget(4+i)==0 then
     return i
    end
@@ -2542,7 +2546,7 @@ function new_levelmenu()
 
   local idx=level_idx()
   local dest="unknown"
-  if idx<=#level_defs then
+  if idx<=num_levels then
    dest=level_defs[idx].name
   end
   local w=min(pixlen(dest)/2,30)
@@ -2560,7 +2564,7 @@ function new_levelmenu()
 
   if btnp(4) then
    local idx=level_idx()
-   if idx<=#level_defs then
+   if idx<=num_levels then
     start_game(idx)
    end
   end
@@ -2683,7 +2687,7 @@ function new_game(level_num)
 
  function me.next_level()
   me.level_num+=1
-  if me.level_num>#level_defs then
+  if me.level_num>num_levels then
    last_level_completed=true
   end
 
