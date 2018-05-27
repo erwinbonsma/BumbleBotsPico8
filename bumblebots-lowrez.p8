@@ -2631,6 +2631,9 @@ function new_game(level_num)
   death_cause=nil
 
   lvl:update()
+  if btnp(5) then
+   extcmd("pause")
+  end
 
   if not anim then
    if death_cause then
