@@ -2583,7 +2583,6 @@ function new_game(level_num)
  local me={}
 
  local anim=nil
- local lives=3
  local death_cause
  local last_level_completed=false
  local display_score=0
@@ -2591,6 +2590,7 @@ function new_game(level_num)
 
  me.level_num=level_num
  me.score=0
+ me.lives=3
 
  local function draw_score()
   if display_score<me.score then
@@ -2608,10 +2608,10 @@ function new_game(level_num)
  function me.draw()
   lvl:draw()
 
-  if display_score<me.score or lives==0 then
+  if display_score<me.score or me.lives==0 then
    draw_score()
   else
-   for i=1,lives do
+   for i=1,me.lives do
     spr(133,i*5-6,0,1,1)
    end
   end
@@ -2644,14 +2644,14 @@ function new_game(level_num)
  end
 
  function me.handle_death()
-  lives-=1
+  me.lives-=1
   anim=die_anim(death_cause)
  end
 
  function me.game_over()
   --repeated auto-destruct can
   --result in negative lives
-  return lives<=0
+  return me.lives<=0
  end
 
  function me.level_done()
@@ -2872,7 +2872,24 @@ function game_done_anim()
  function me.update()
   clk+=1
 
-  if btnp(4) or clk>120 then
+  if clk==80 then
+   if game.lives>0 then
+    game.lives-=1
+   else
+    clk=140
+   end
+  end
+
+  if clk>=80 and clk<140 then
+   sfx(8)
+   game.score+=1
+  elseif clk==140 then
+   if game.lives>0 then
+    clk=75
+   else
+    progress_mgr.game_done()
+   end
+  elseif clk==240 then
    show_endscreen()
   end
 
@@ -2882,6 +2899,11 @@ function game_done_anim()
  function me.draw()
   --end of the line
   spr(212,8,20,6,3)
+
+  if clk>=80 and clk<140 then
+   --live score
+   spr(133,clk-70,0)
+  end
  end
 
  sfx(4)
