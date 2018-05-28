@@ -1528,17 +1528,63 @@ function player:swap_unit()
 end
 
 function player:update()
- if btnp(0) then
+ local btns=btn()
+ if (btns!=0) then
+  debug("btns="..btns)
+ end
+
+ if btnp(0) and btns==1 then
+  --only left just pressed
   self.nxt_rot_dir=-1
- elseif btnp(1) then
+ elseif btnp(1) and btns==2 then
+  --only right just pressed
   self.nxt_rot_dir=1
  end
 
  local desired_mov_dir=0
- if btn(2) then
+ local desired_heading=-1
+ if btns==4 then
+  --only forward being pressed
   desired_mov_dir=1
- elseif btn(3) then
+ elseif btns==8 then
+  --only backward being pressed
   desired_mov_dir=-1
+ end
+
+ --handle compound moves,
+ --created by touch controls
+ if btns==6 then
+  --right+up
+  desired_heading=0
+ elseif btns==10 then
+  --right+down
+  desired_heading=1
+ elseif btns==9 then
+  --left+down
+  desired_heading=2
+ elseif btns==5 then
+  --left+up
+  desired_heading=3
+ end
+
+ if desired_heading>=0 then
+  local h=self:heading()
+  debug("desired: "..desired_heading)
+  debug("actual: "..h)
+  if h==desired_heading then
+   desired_mov_dir=1
+  elseif (h+2)%4==desired_heading then
+   desired_mov_dir=-1
+  elseif (h+1)%4==desired_heading then
+   self.nxt_rot_dir=1
+  else
+   self.nxt_rot_dir=-1
+  end
+  if self.nxt_rot_dir then
+   debug("->rot="..self.nxt_rot_dir)
+  else
+   debug("->mov="..desired_mov_dir)
+  end
  end
 
  if self:can_start_move() then
