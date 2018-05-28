@@ -1529,9 +1529,6 @@ end
 
 function player:update()
  local btns=btn()
- if (btns!=0) then
-  debug("btns="..btns)
- end
 
  if btnp(0) and btns==1 then
   --only left just pressed
@@ -1542,7 +1539,6 @@ function player:update()
  end
 
  local desired_mov_dir=0
- local desired_heading=-1
  if btns==4 then
   --only forward being pressed
   desired_mov_dir=1
@@ -1553,6 +1549,7 @@ function player:update()
 
  --handle compound moves,
  --created by touch controls
+ local desired_heading=-1
  if btns==6 then
   --right+up
   desired_heading=0
@@ -1569,21 +1566,16 @@ function player:update()
 
  if desired_heading>=0 then
   local h=self:heading()
-  debug("desired: "..desired_heading)
-  debug("actual: "..h)
-  if h==desired_heading then
-   desired_mov_dir=1
-  elseif (h+2)%4==desired_heading then
-   desired_mov_dir=-1
-  elseif (h+1)%4==desired_heading then
-   self.nxt_rot_dir=1
-  else
-   self.nxt_rot_dir=-1
-  end
-  if self.nxt_rot_dir then
-   debug("->rot="..self.nxt_rot_dir)
-  else
-   debug("->mov="..desired_mov_dir)
+  if not self:turning() then
+   if h==desired_heading then
+    desired_mov_dir=1
+   elseif (h+2)%4==desired_heading then
+    desired_mov_dir=-1
+   elseif (h+1)%4==desired_heading then
+    self.nxt_rot_dir=1
+   else
+    self.nxt_rot_dir=-1
+   end
   end
  end
 
